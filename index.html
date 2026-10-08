@@ -443,10 +443,12 @@ function renderDebts(){
  if(DE_EDIT!==null)h+=deForm();
  if(D.taxbill&&D.taxbill.series[0][1]>0)h+=`<div class="tiny" style="margin-top:8px">IRS tracking comes from the built-in Tax Bill amortization — edit its payment amounts in the ledger.</div>`;
  h+=`<h2>Interest paid (plan total)</h2><div class="card">`;
+ const SUPD=suppressedKeys();
  for(const k of Object.keys(D.series)){
+  if(SUPD.includes(k))continue;
   h+=`<div class="row"><span>${(DEBT_META[k]||{label:k,color:'#8b93ff'}).label}</span><span class="num amb">${fmt(D.interest[k]||0)}</span></div>`}
  for(const d of myDebts())h+=`<div class="row"><span>${d.name}</span><span class="num amb">${fmt(uDebt(d).interest)}</span></div>`;
- if(D.taxbill&&D.taxbill.series[0][1]>0)h+=`<div class="row"><span>IRS (interest only)</span><span class="num amb">${fmt(D.taxbill.interest)}</span></div><div class="row"><span>IRS penalties</span><span class="num amb">${fmt(D.taxbill.penalty)}</span></div>`;h+=`<div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span><b>Total</b></span><span class="num amb">${fmt(Object.values(D.interest).reduce((a,b)=>a+b,0)+(D.taxbill?D.taxbill.interest+D.taxbill.penalty:0))}</span></div></div>`;
+ if(D.taxbill&&D.taxbill.series[0][1]>0)h+=`<div class="row"><span>IRS (interest only)</span><span class="num amb">${fmt(D.taxbill.interest)}</span></div><div class="row"><span>IRS penalties</span><span class="num amb">${fmt(D.taxbill.penalty)}</span></div>`;h+=`<div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span><b>Total</b></span><span class="num amb">${fmt(Object.entries(D.interest).filter(([k])=>!SUPD.includes(k)).map(x=>x[1]).reduce((a,b)=>a+b,0)+(D.taxbill?D.taxbill.interest+D.taxbill.penalty:0))}</span></div></div>`;
  document.getElementById('v-debts').innerHTML=h;
 }
 
