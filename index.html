@@ -351,8 +351,8 @@ function uDebt(d){
  while(p<=stop){const intx=bal*d.apr/1200;int_+=intx;bal=bal+intx-Math.min(d.pay,bal+intx);if(bal<=0.5){bal=0;break}p.setMonth(p.getMonth()+1)}
  let payoff=d.closed||null;
  if(d.closed)bal=0;
- if(!payoff&&bal>0.5){let b=bal,pp=new Date(Math.max(p.getTime(),stop.getTime()));for(let i=0;i<480;i++){const intx=b*d.apr/1200;b=b+intx-Math.min(d.pay,b+intx);pp.setMonth(pp.getMonth()+1);if(b<=0.5){payoff=pp.toISOString().slice(0,10);break}}}
- return{cur:Math.round(bal*100)/100,interest:Math.round(int_*100)/100,payoff,moInt:d.bal*d.apr/1200}}
+ let slow=false;if(!payoff&&bal>0.5){let b=bal,pp=new Date(Math.max(p.getTime(),stop.getTime()));for(let i=0;i<1200;i++){const intx=b*d.apr/1200;b=b+intx-Math.min(d.pay,b+intx);pp.setMonth(pp.getMonth()+1);if(b<=0.5){payoff=pp.toISOString().slice(0,10);break}}if(!payoff)slow=true}
+ return{cur:Math.round(bal*100)/100,interest:Math.round(int_*100)/100,payoff,slow,moInt:d.bal*d.apr/1200}}
 function suppressedKeys(){const u=myDebts().map(x=>x.name);return D.series?Object.keys(D.series).filter(k=>u.includes(k)||(DEBT_META[k]&&u.includes(DEBT_META[k].label))):[]}
 function editDebt(i){DE_EDIT=i<myDebts().length?Object.assign({},myDebts()[i]):{i:-1,name:'',bal:'',apr:'',pay:'',day:15,start:dstr};DE_EDIT.i=i;renderDebts()}
 function debtLedgerKey(name){const ks={};for(const t of D.rows)for(const k in t){if(k!=='date'&&t[k]<0)ks[k]=1}return Object.keys(ks).find(k=>k.toLowerCase()===name.toLowerCase())||null}
@@ -436,7 +436,7 @@ function renderDebts(){
   h+=`<div class="bal" style="font-size:30px;margin:6px 0">${fmt(u.cur)}</div>
   <div class="row"><span class="tiny">Paid down since ${d.start}</span><span class="num pos">${fmt(d.bal-u.cur)}</span></div>
   <div class="bar"><i style="width:${done}%;background:#3ecf8e"></i></div>
-  <div class="row" style="margin-top:8px"><span class="tiny">Projected payoff</span><span class="num">${u.payoff||(u.moInt>d.pay?'⚠ Payment ('+fmt(d.pay)+'/mo) is less than monthly interest ('+fmt(u.moInt)+'/mo) — balance will grow':'—')}</span></div>
+  <div class="row" style="margin-top:8px"><span class="tiny">Projected payoff</span><span class="num">${u.slow?'⚠ At '+fmt(d.pay)+'/mo vs '+fmt(u.moInt)+'/mo interest, payoff takes 100+ years — raise the payment':u.payoff||(u.moInt>d.pay?'⚠ Payment ('+fmt(d.pay)+'/mo) is less than monthly interest ('+fmt(u.moInt)+'/mo) — balance will grow':'—')}</span></div>
   <div class="row"><span class="tiny">Interest paid so far</span><span class="num amb">${fmt(u.interest)}</span></div>
   <div class="btnrow"><button class="btn-s" onclick="editDebt(${i})">Edit</button><button class="btn-d" onclick="closeDebt(${i})">✓ Mark paid off</button></div></div>`}}
  h+=`<div class="seg"><button class="btn-s" onclick="editDebt(-1)">+ Add / track a debt</button></div>`;
