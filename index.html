@@ -74,7 +74,7 @@ svg{display:block;width:100%}
 <div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:inline-block" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
 <div class="tiny" style="margin:0 0 10px">Pay what you want, $1 minimum. One-time purchase, yours forever — or <a href="#" onclick="return startTrial()">keep building first</a>.</div>
 <div style="display:flex;gap:8px;margin:2px 0 4px"><input type="text" id="code-in" placeholder="Purchase code" style="flex:1;margin:0" onkeydown="if(event.key==='Enter')unlockCode()"><button class="btn-p" onclick="return unlockCode()" style="flex:none">Unlock</button></div>
-<div class="tiny" style="margin:2px 0 10px">Already paid? Your code is in the confirmation after checkout — enter it once and this app is unlocked on this device forever.</div>
+<div class="tiny" style="margin:2px 0 10px">Already paid? Your code is on the confirmation screen right after checkout (click "Return to merchant" if you closed it). Can't find it? <a href="#" onclick="return emailSupport()">Email support</a> and we'll resend it.</div>
 <div class="tiny" style="margin:8px 0 0">Once you're in, importing your spreadsheet and guided setup are in ⚙ Settings.</div>
 <div id="gs" class="off">
  <label>Starting balance</label><input type="text" id="gs-sb" placeholder="e.g. 4200">
@@ -492,11 +492,14 @@ function buyPrompt(){
 function unlockCode(){
  const v=(document.getElementById('code-in').value||'').trim().toUpperCase();
  if(!v)return false;
- if(v===CODE){store.setItem(UKEY,'paid');closeOb();return false}
+ if(v===CODE){finishUnlock();return false}
  alert("That code doesn't match. Your code arrives in the confirmation right after checkout on Stripe.");return false}
-function startTrial(){store.setItem(UKEY,'trial');closeOb();showTrial(true);return false}
+function finishUnlock(){store.setItem(UKEY,'paid');blankIfEmpty();closeOb();return false}
+function startTrial(){store.setItem(UKEY,'trial');blankIfEmpty();closeOb();showTrial(true);return false}
+function blankIfEmpty(){if(!store.getItem(KEY)){const ds=dstr();D=applyPlan({meta:{startBal:0},rows:[{date:ds}]});store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:ds}]}));finishLoad()}}
 function showTrial(on){const b=document.getElementById('trialbar');if(!b)return;b.style.display=on?'block':'none'}
 function isUnlocked(){const u=store.getItem(UKEY);return u==='paid'||u==='trial'}
+function emailSupport(){location.href='mailto:jeff@realanddigitaldeals.com?subject=Lost%20my%20Count%20On%20It%20code&body=Hi%20Jeff%2C%20I%20paid%20for%20Count%20On%20It%20but%20lost%20my%20unlock%20code.%20My%20name%20is%20';return false}
 function closeOb(){document.getElementById('onboard').classList.remove('on')}
 function showOb(){document.getElementById('onboard').classList.add('on');renderSetup()}
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal[0][1]},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));closeOb()}
@@ -643,6 +646,7 @@ function finishImport(rows){
  store.setItem(KEY,JSON.stringify({meta:{startBal:sb},rows}));
  finishLoad();closeOb();
 }
+if(new URLSearchParams(location.search).get('paid')==='1'){finishUnlock();history.replaceState(null,'',location.pathname)}
 if(!isUnlocked())showOb();else if(store.getItem(UKEY)==='trial')showTrial(true);
 renderToday();
 </script>
