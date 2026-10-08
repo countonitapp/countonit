@@ -48,6 +48,7 @@ svg{display:block;width:100%}
 .ttxn{cursor:pointer}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:20;padding:16px}
 .modal.on{display:flex}
+.modal#onboard{background:var(--bg);z-index:100}
 .sheet{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;width:100%;max-width:420px;margin-bottom:40px;max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sheet label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .sheet input[type=text]{font-size:16px}
@@ -67,16 +68,14 @@ svg{display:block;width:100%}
   <div id="v-today"></div><div id="v-cal" class="hidden"></div><div id="v-month" class="hidden"></div><div id="v-debts" class="hidden"></div><div id="v-txns" class="hidden"></div>
 </div>
 <div id="trialbar" class="off" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 14px;font-size:13px;z-index:50"><span>Enjoying Count On It? <a href="#" onclick="location.href=BUY_URL;return false">Name your price →</a></span><button class="btn-s" style="float:right;padding:4px 10px;font-size:12px" onclick="this.parentNode.style.display='none'">✕</button></div>
-<div class="modal" id="onboard" style="align-items:center" onclick="if(event.target===this&&isUnlocked())closeOb()"><div class="sheet" style="max-width:480px">
+<div class="modal on" id="onboard" style="align-items:center" onclick="if(event.target===this&&isUnlocked())closeOb()"><div class="sheet" style="max-width:480px">
 <h2 style="margin-top:0">Welcome to Count On It — your cashflow plan</h2>
 <div class="tiny" style="margin-bottom:14px">See what your balance will do, day by day — no bank connections, everything stays on this device.</div>
 <div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:inline-block" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
 <div class="tiny" style="margin:0 0 10px">Pay what you want, $1 minimum. One-time purchase, yours forever — or <a href="#" onclick="return startTrial()">keep building first</a>.</div>
 <div style="display:flex;gap:8px;margin:2px 0 4px"><input type="text" id="code-in" placeholder="Purchase code" style="flex:1;margin:0" onkeydown="if(event.key==='Enter')unlockCode()"><button class="btn-p" onclick="return unlockCode()" style="flex:none">Unlock</button></div>
 <div class="tiny" style="margin:2px 0 10px">Already paid? Your code is in the confirmation after checkout — enter it once and this app is unlocked on this device forever.</div>
-<div class="btnrow"><button class="btn-p" onclick="pickFile()">📄 Import my spreadsheet</button></div>
-<div class="tiny" style="margin:4px 0 12px">CSV or Excel with a Date column — like the sheet this app was built from.</div>
-<div class="btnrow"><button class="btn-s" onclick="document.getElementById('gs').classList.toggle('off')">⚙ Guided setup instead</button></div>
+<div class="tiny" style="margin:8px 0 0">Once you're in, importing your spreadsheet and guided setup are in ⚙ Settings.</div>
 <div id="gs" class="off">
  <label>Starting balance</label><input type="text" id="gs-sb" placeholder="e.g. 4200">
  <div class="tiny" style="margin-top:14px;font-weight:600">Add recurring income & bills</div>
@@ -99,7 +98,6 @@ svg{display:block;width:100%}
  <div class="card" id="setup-items" style="margin-top:10px"></div>
  <div class="btnrow"><button class="btn-p" onclick="buildPlan()">Build my plan</button></div>
 </div>
-<div class="btnrow" style="margin-top:14px"><button class="btn-s" onclick="useBuiltin()">Use built-in demo data</button></div>
 </div></div>
 <input type="file" id="imp-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFile(event)">
 <div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="sheet">
@@ -464,6 +462,7 @@ function renderTxns(){
  let h=`<div class="seg">`;
  for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='all'?'All':c}</button>`;
  h+='</div>';
+ h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="document.getElementById('gs').classList.toggle('off')">⚙ Guided setup</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportRules()">⬆ Export rules</button><button class="btn-s" onclick="importRules()">⬇ Import rules</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
  let list=D.rows.slice().reverse();
