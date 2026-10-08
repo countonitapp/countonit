@@ -209,6 +209,15 @@ function importRules(){const s=prompt('Paste rules JSON:');if(!s)return;try{cons
 
 // ---------- TODAY ----------
 function renderToday(){
+ const blank=D.rows.length<2&&Object.keys(D.series||{}).length===0;
+ if(blank){document.getElementById('v-today').innerHTML=`<div class="card" style="text-align:center;padding:28px 16px">
+ <div style="font-size:40px;line-height:1">💵</div>
+ <div style="font-weight:700;font-size:17px;margin:10px 0 6px">Welcome to Count On It</div>
+ <div class="tiny" style="max-width:340px;margin:0 auto 16px">This is your blank slate. Add the money coming in and going out — paycheck, rent, bills — and watch your balance project day by day.</div>
+ <div class="btnrow" style="max-width:320px;margin:0 auto"><button class="btn-p" onclick="go('txns');document.getElementById('gs').classList.toggle('off')">⚙ Guided setup</button></div>
+ <div class="btnrow" style="max-width:320px;margin:8px auto 0"><button class="btn-s" onclick="pickFile()">📄 Import my spreadsheet</button></div>
+ <div class="tiny" style="margin-top:14px">Tip: guided setup takes about 5 minutes.</div></div>`;
+ return}
  const b=balOn(dstr);const tIrs=taxOn(dstr);
  const start=D.bal[0][1];
  const SUPD=suppressedKeys();
@@ -496,7 +505,7 @@ function unlockCode(){
  alert("That code doesn't match. Your code arrives in the confirmation right after checkout on Stripe.");return false}
 function finishUnlock(){store.setItem(UKEY,'paid');blankIfEmpty();closeOb();return false}
 function startTrial(){store.setItem(UKEY,'trial');blankIfEmpty();closeOb();showTrial(true);return false}
-function blankIfEmpty(){if(!store.getItem(KEY)){const ds=dstr();D=applyPlan({meta:{startBal:0},rows:[{date:ds}]});store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:ds}]}));finishLoad()}}
+function blankIfEmpty(){if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:dstr()}]}));location.reload();return true}return false}
 function showTrial(on){const b=document.getElementById('trialbar');if(!b)return;b.style.display=on?'block':'none'}
 function isUnlocked(){const u=store.getItem(UKEY);return u==='paid'||u==='trial'}
 function emailSupport(){location.href='mailto:jeff@realanddigitaldeals.com?subject=Lost%20my%20Count%20On%20It%20code&body=Hi%20Jeff%2C%20I%20paid%20for%20Count%20On%20It%20but%20lost%20my%20unlock%20code.%20My%20name%20is%20';return false}
