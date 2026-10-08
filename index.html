@@ -69,6 +69,8 @@ svg{display:block;width:100%}
 <div class="modal" id="onboard" style="align-items:center" onclick="if(event.target===this)closeOb()"><div class="sheet" style="max-width:480px">
 <h2 style="margin-top:0">Welcome to Count On It — your cashflow plan</h2>
 <div class="tiny" style="margin-bottom:14px">See what your balance will do, day by day — no bank connections, everything stays on this device.</div>
+<div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:inline-block" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
+<div class="tiny" style="margin:0 0 12px">Pay what you want, $1 minimum. One-time purchase, yours forever — or <a href="#" onclick="return startTrial()">keep building first</a>.</div>
 <div class="btnrow"><button class="btn-p" onclick="pickFile()">📄 Import my spreadsheet</button></div>
 <div class="tiny" style="margin:4px 0 12px">CSV or Excel with a Date column — like the sheet this app was built from.</div>
 <div class="btnrow"><button class="btn-s" onclick="document.getElementById('gs').classList.toggle('off')">⚙ Guided setup instead</button></div>
@@ -479,6 +481,12 @@ function renderTxns(){
 function setF(c){filter=c;renderTxns()}
 
 // ---------- ONBOARDING / PLANS ----------
+// ---------- BUY / TRIAL (edit BUY_URL after creating the Stripe payment link) ----------
+const BUY_URL='https://buy.stripe.com/4gM28rdsd9rj6ml4vn9IQ00'; // Stripe PWYW payment link
+function buyPrompt(){
+ if(!BUY_URL){alert('Checkout coming soon — the app is free to use for now.');return false}
+ location.href=BUY_URL;return false}
+function startTrial(){closeOb();return false}
 function closeOb(){document.getElementById('onboard').classList.remove('on')}
 function showOb(){document.getElementById('onboard').classList.add('on');renderSetup()}
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal[0][1]},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));closeOb()}
