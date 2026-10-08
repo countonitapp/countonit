@@ -66,11 +66,14 @@ svg{display:block;width:100%}
   <div class="row"><div><h1>Count On It</h1><div class="sub" id="asof"></div></div></div>
   <div id="v-today"></div><div id="v-cal" class="hidden"></div><div id="v-month" class="hidden"></div><div id="v-debts" class="hidden"></div><div id="v-txns" class="hidden"></div>
 </div>
-<div class="modal" id="onboard" style="align-items:center" onclick="if(event.target===this)closeOb()"><div class="sheet" style="max-width:480px">
+<div id="trialbar" class="off" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 14px;font-size:13px;z-index:50"><span>Enjoying Count On It? <a href="#" onclick="location.href=BUY_URL;return false">Name your price →</a></span><button class="btn-s" style="float:right;padding:4px 10px;font-size:12px" onclick="this.parentNode.style.display='none'">✕</button></div>
+<div class="modal" id="onboard" style="align-items:center" onclick="if(event.target===this&&isUnlocked())closeOb()"><div class="sheet" style="max-width:480px">
 <h2 style="margin-top:0">Welcome to Count On It — your cashflow plan</h2>
 <div class="tiny" style="margin-bottom:14px">See what your balance will do, day by day — no bank connections, everything stays on this device.</div>
 <div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:inline-block" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
-<div class="tiny" style="margin:0 0 12px">Pay what you want, $1 minimum. One-time purchase, yours forever — or <a href="#" onclick="return startTrial()">keep building first</a>.</div>
+<div class="tiny" style="margin:0 0 10px">Pay what you want, $1 minimum. One-time purchase, yours forever — or <a href="#" onclick="return startTrial()">keep building first</a>.</div>
+<div style="display:flex;gap:8px;margin:2px 0 4px"><input type="text" id="code-in" placeholder="Purchase code" style="flex:1;margin:0" onkeydown="if(event.key==='Enter')unlockCode()"><button class="btn-p" onclick="return unlockCode()" style="flex:none">Unlock</button></div>
+<div class="tiny" style="margin:2px 0 10px">Already paid? Your code is in the confirmation after checkout — enter it once and this app is unlocked on this device forever.</div>
 <div class="btnrow"><button class="btn-p" onclick="pickFile()">📄 Import my spreadsheet</button></div>
 <div class="tiny" style="margin:4px 0 12px">CSV or Excel with a Date column — like the sheet this app was built from.</div>
 <div class="btnrow"><button class="btn-s" onclick="document.getElementById('gs').classList.toggle('off')">⚙ Guided setup instead</button></div>
@@ -483,10 +486,18 @@ function setF(c){filter=c;renderTxns()}
 // ---------- ONBOARDING / PLANS ----------
 // ---------- BUY / TRIAL (edit BUY_URL after creating the Stripe payment link) ----------
 const BUY_URL='https://buy.stripe.com/4gM28rdsd9rj6ml4vn9IQ00'; // Stripe PWYW payment link
+const UKEY='cfunlock_v1', CODE='COUNTONIT'; // purchase code — matches the code in the Stripe post-purchase message
 function buyPrompt(){
  if(!BUY_URL){alert('Checkout coming soon — the app is free to use for now.');return false}
  location.href=BUY_URL;return false}
-function startTrial(){closeOb();return false}
+function unlockCode(){
+ const v=(document.getElementById('code-in').value||'').trim().toUpperCase();
+ if(!v)return false;
+ if(v===CODE){store.setItem(UKEY,'paid');closeOb();return false}
+ alert("That code doesn't match. Your code arrives in the confirmation right after checkout on Stripe.");return false}
+function startTrial(){store.setItem(UKEY,'trial');closeOb();showTrial(true);return false}
+function showTrial(on){const b=document.getElementById('trialbar');if(!b)return;b.style.display=on?'block':'none'}
+function isUnlocked(){const u=store.getItem(UKEY);return u==='paid'||u==='trial'}
 function closeOb(){document.getElementById('onboard').classList.remove('on')}
 function showOb(){document.getElementById('onboard').classList.add('on');renderSetup()}
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal[0][1]},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));closeOb()}
@@ -633,7 +644,7 @@ function finishImport(rows){
  store.setItem(KEY,JSON.stringify({meta:{startBal:sb},rows}));
  finishLoad();closeOb();
 }
-if(!store.getItem(KEY))showOb();
+if(!isUnlocked())showOb();else if(store.getItem(UKEY)==='trial')showTrial(true);
 renderToday();
 </script>
 </body>
