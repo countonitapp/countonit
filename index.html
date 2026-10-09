@@ -186,7 +186,7 @@ function matchesOf(k,amt){return D.rows.filter(t=>t[k]!==undefined&&Math.abs(Mat
 let CUR=null;
 function editTxn(date,k,amt){
  CUR={date,k,amt};
- document.getElementById('add-form').style.display='none';
+ document.getElementById('addmodal').classList.remove('on');
  const m=labelOf(k,amt,date);
  document.getElementById('m-info').textContent=k+' · '+date+' · '+fmt(amt);
  document.getElementById('m-name').value=m?m.label:'';
