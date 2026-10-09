@@ -474,7 +474,7 @@ function renderTxns(){
  h+='</div>';
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="return openGuided()">⚙ Guided setup</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportRules()">⬆ Export rules</button><button class="btn-s" onclick="importRules()">⬇ Import rules</button></div>`;
- h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
+ h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="saveBackup()">💾 Save backup</button><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><label class="btn-s" style="display:inline-block;cursor:pointer">⬇ Import plan<input type="file" id="plan-file" accept=".json,application/json" style="display:none" onchange="importPlanFile(this)"></label><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
  let list=D.rows.slice().reverse();
  if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k)));
  h+=`<div class="card">`;
@@ -515,6 +515,11 @@ function openGuided(){showOb();document.getElementById('gs').classList.remove('o
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal[0][1]},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));closeOb()}
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
+function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.rows))throw new Error('bad file');save(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message)}};r.readAsText(f)}
+function backupData(){return JSON.stringify({meta:D.meta,rows:D.rows,rules:RULES,overrides:OVR,v:1},null,1)}
+function downloadJSON(s,name){const b=new Blob([s],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+function saveBackup(){downloadJSON(backupData(),'Count On It Backup '+new Date().toISOString().slice(0,10)+'.json')}
+function autoBackup(){const last=store.getItem('cfbackup')||'';const m=new Date().toISOString().slice(0,7);if(last===m)return;store.setItem('cfbackup',m);if(D.rows.length)saveBackup()}
 function renderSetup(){
  let h='';SETUP.forEach((it,i)=>{h+=`<div class="txn"><div><div>${it.dir==='in'?'+':'−'} ${it.name}</div><div class="tiny">${it.cat==='loan'?('loan · '+fmt(it.bal)+' @ '+it.apr+'% APR · pays '+fmt(it.amt)+'/mo on day '+it.day):(it.freq+' · day '+it.day+' · '+fmt(it.amt))}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="SETUP.splice(${i},1);renderSetup()">✕</button></div>`});
  document.getElementById('setup-items').innerHTML=h||'<div class="tiny">No items yet — add your paycheck, bills, etc.</div>';
@@ -658,7 +663,7 @@ function finishImport(rows){
  finishLoad();closeOb();
 }
 if(new URLSearchParams(location.search).get('paid')==='1'){finishUnlock();history.replaceState(null,'',location.pathname)}
-if(!isUnlocked())showOb();else if(store.getItem(UKEY)==='trial')showTrial(true);
+if(!isUnlocked())showOb();else{if(store.getItem(UKEY)==='trial')showTrial(true);autoBackup()}
 renderToday();
 </script>
 </body>
