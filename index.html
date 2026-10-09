@@ -111,6 +111,14 @@ svg{display:block;width:100%}
 <div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-cat">Category</label><select id="m-cat" style="width:100%"><option value="">— keep —</option><option>Payroll</option><option>Other income</option><option>Bills</option><option>Credit Cards</option><option>Other debits</option><option>Tithe</option><option value="debt">Debt payment</option></select></div></div>
 <div class="btnrow"><button class="btn-s" onclick="applyEdit()">Apply change to this entry</button><button class="btn-d" onclick="deleteEntry()">Delete entry</button></div>
 <div class="btnrow"><button class="btn-d" onclick="removeTxn()">Remove label</button></div>
+<div id="add-form" style="display:none;border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
+ <div class="tiny" style="margin-bottom:8px"><b>New entry</b></div>
+ <div class="row" style="gap:8px"><div style="flex:1"><label for="a-name">Name</label><input type="text" id="a-name" placeholder="e.g. Water bill"></div><div style="flex:1"><label for="a-amt">Amount</label><input type="number" step="0.01" id="a-amt"></div></div>
+ <div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-dir">Direction</label><select id="a-dir" style="width:100%"><option value="out">Out (money going out)</option><option value="in">In (money coming in)</option></select></div><div style="flex:1"><label for="a-cat">Category</label><select id="a-cat" style="width:100%"><option>Other debits</option><option>Payroll</option><option>Other income</option><option>Bills</option><option>Credit Cards</option><option>Tithe</option><option value="debt">Debt payment</option></select></div></div>
+ <div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-freq">Frequency</label><select id="a-freq" style="width:100%" onchange="document.getElementById('a-dayrow').style.display=this.value==='once'?'none':'block'"><option value="once">Once</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div><div style="flex:1"><label for="a-start">Starts on</label><input type="date" id="a-start"></div></div>
+ <div class="row" id="a-dayrow" style="gap:8px;margin-top:8px;display:none"><div style="flex:1"><label for="a-day">Day of month (1–31)</label><input type="number" id="a-day" min="1" max="31" value="1"></div></div>
+ <div class="btnrow"><button class="btn-p" onclick="addEntry()">Add entry</button></div>
+</div>
 </div></div>
 <nav>
 <button class="on" data-v="today" onclick="go('today')">Today</button>
@@ -170,6 +178,7 @@ function matchesOf(k,amt){return D.rows.filter(t=>t[k]!==undefined&&Math.abs(Mat
 let CUR=null;
 function editTxn(date,k,amt){
  CUR={date,k,amt};
+ document.getElementById('add-form').style.display='none';
  const m=labelOf(k,amt,date);
  document.getElementById('m-info').textContent=k+' · '+date+' · '+fmt(amt);
  document.getElementById('m-name').value=m?m.label:'';
@@ -498,7 +507,7 @@ function renderTxns(){
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" id="orderbtn" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="return openGuided()">⚙ Guided setup</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportRules()">⬆ Export rules</button><button class="btn-s" onclick="importRules()">⬇ Import rules</button></div>`;
- h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="saveBackup()">💾 Save backup</button><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><label class="btn-s" style="display:inline-block;cursor:pointer">⬇ Import plan<input type="file" id="plan-file" accept=".json,application/json" style="display:none" onchange="importPlanFile(this)"></label><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
+ h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="saveBackup()">💾 Save backup</button><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><button class="btn-s" onclick="openAdd()">➕ Add entry</button><label class="btn-s" style="display:inline-block;cursor:pointer">⬇ Import plan<input type="file" id="plan-file" accept=".json,application/json" style="display:none" onchange="importPlanFile(this)"></label><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
  let list=D.rows.slice().sort((a,b)=>txnNewest?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
  if(txnNewest){const fut=list.filter(t=>t.date>=dstr),past=list.filter(t=>t.date<dstr);list=fut.concat(past)}
  if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k)));
@@ -518,6 +527,46 @@ function renderTxns(){
 function setF(c){filter=c;renderTxns()}
 let txnNewest=true;
 function toggleOrder(){txnNewest=!txnNewest;renderTxns()}
+function advM(d,day){const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return new Date(d.getFullYear(),d.getMonth(),Math.min(day,e))}
+function nextOccFrom(freq,day,fromStr){
+ const d=new Date(fromStr+'T12:00:00');
+ if(freq==='weekly')return new Date(d.getTime()+7*86400000);
+ if(freq==='biweekly')return new Date(d.getTime()+14*86400000);
+ if(freq==='monthly'){const o=advM(d,day);return o>=d?o:advM(new Date(d.getFullYear(),d.getMonth()+1,1),day)}
+ if(freq==='semimonthly'){const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const d1=Math.min(day,e),d2=Math.min(day+15,e);const o1=new Date(d.getFullYear(),d.getMonth(),d1),o2=new Date(d.getFullYear(),d.getMonth(),d2);if(o1>=d)return o1;if(o2>d)return o2;return advM(new Date(d.getFullYear(),d.getMonth()+1,1),day)}
+ return advM(d,day)
+}
+function addEntry(){
+ const name=document.getElementById('a-name').value.trim();
+ const amt=parseFloat(document.getElementById('a-amt').value);
+ const start=document.getElementById('a-start').value||dstr;
+ const freq=document.getElementById('a-freq').value;
+ const day=parseInt(document.getElementById('a-day').value)||1;
+ const dir=document.getElementById('a-dir').value;
+ const cat=document.getElementById('a-cat').value;
+ if(!name||!amt||amt<=0){alert('Enter a name and an amount');return}
+ const sign=dir==='in'?1:-1;
+ let d=new Date(start+'T12:00:00');
+ if(freq!=='once'){const first=nextOccFrom(freq,day,start);if(first>d)d=first}
+ const end=new Date();end.setMonth(end.getMonth()+42);
+ while(d<=end){
+  const ds=d.toISOString().slice(0,10);
+  let row=D.rows.find(r=>r.date===ds);
+  if(!row){row={date:ds};D.rows.push(row);D.rows.sort((a,b)=>a.date.localeCompare(b.date))}
+  row[name]=(row[name]||0)+sign*amt;
+  d=freq==='once'?new Date('9999-12-31'):(freq==='weekly'?new Date(d.getTime()+7*86400000):freq==='biweekly'?new Date(d.getTime()+14*86400000):freq==='semimonthly'?nextOccFrom(freq,day,ds):advM(new Date(d.getFullYear(),d.getMonth()+1,1),day))
+ }
+ CAT[name]=cat==='Payroll'||cat==='Other income'?'income':cat==='debt'?'debt':'dec';
+ CATX[name]=cat||'Other debits';
+ RULES.push({k:name,amt,label:name,rec:freq!=='once',day:freq!=='once'?day:undefined});
+ saveStore();savePlan(D);closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()
+}
+function openAdd(){
+ document.getElementById('m-info').textContent='Create a new ledger entry or a recurring series. Recurring items repeat until the plan horizon (42 months).';
+ document.getElementById('m-amt').value='';document.getElementById('m-date').value='';
+ document.getElementById('add-form').style.display='block';
+ document.getElementById('modal').classList.add('on')
+}
 
 // ---------- ONBOARDING / PLANS ----------
 // ---------- BUY / TRIAL (edit BUY_URL after creating the Stripe payment link) ----------
