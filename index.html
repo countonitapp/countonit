@@ -213,11 +213,11 @@ function applyEdit(){
   t[CUR.k]=signed;break}
  const na2=document.getElementById('m-name').value.trim();
  if(na2){const newKey=(nd||CUR.date)+'|'+CUR.k+'|'+signed;OVR[newKey]=na2;saveStore()}
- savePlan(D);closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()}
+ savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()}
 function deleteEntry(){
  if(!CUR||!confirm('Delete this entry from the plan?'))return;
  for(let i=0;i<D.rows.length;i++)if(D.rows[i].date===CUR.date&&D.rows[i][CUR.k]!==undefined&&Math.abs(D.rows[i][CUR.k]-CUR.amt)<0.01){delete D.rows[i][CUR.k];break}
- savePlan(D);closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()}
+ savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()}
 function saveTxn(all){
  if(!CUR)return;const name=document.getElementById('m-name').value.trim();
  const recur=document.getElementById('m-recur').checked;
@@ -592,7 +592,7 @@ function addEntry(){
  const cn=(cat==='debt'?'Debt payment':cat);CAT[name]=CAT_KIND[cn]||((sign*amt||0)>0?'income':'dec');
  if(cat)CATX[name]=cn;
  RULES.push({k:name,amt:Math.abs(isLoan?pay:amt),label:name,rec:isLoan||freq!=='once',day:freq!=='once'?day:undefined});
- saveStore();savePlan(D);closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()
+ saveStore();savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()
 }
 function openAdd(){
  document.getElementById('addmodal').classList.add('on');
