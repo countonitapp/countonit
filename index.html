@@ -82,7 +82,7 @@ svg{display:block;width:100%}
   <input type="text" id="si-name" placeholder="Name (e.g. Paycheck)">
   <input type="text" id="si-amt" inputmode="decimal" placeholder="Amount">
   <select id="si-dir"><option value="in">Money in</option><option value="out">Money out</option></select>
-  <select id="si-cat" onchange="document.getElementById('loan-fields').classList.toggle('off',this.value!=='loan')"><option>Payroll</option><option>Other income</option><option>Bills</option><option>Credit Cards</option><option>Other debits</option><option value="loan">Loan (with interest)</option></select>
+  <select id="si-cat" onchange="document.getElementById('loan-fields').classList.toggle('off',this.value!=='loan')"><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="loan">Loan (with interest)</option></select>
   <select id="si-freq"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="semimonthly">Twice a month</option></select>
   <input type="text" id="si-day" inputmode="numeric" placeholder="Day of month (1-31)">
  </div>
@@ -107,7 +107,7 @@ svg{display:block;width:100%}
 <div id="m-hint" class="tiny" style="margin-top:6px"></div>
 <div class="btnrow"><button class="btn-p" onclick="saveTxn(true)">Save & apply to all matching</button><button class="btn-s" onclick="saveTxn(false)">Save this one</button></div>
 <div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-amt">Amount</label><input type="number" step="0.01" id="m-amt" style="width:100%"></div><div style="flex:1"><label for="m-date">Date</label><input type="date" id="m-date" style="width:100%"></div></div>
-<div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-cat">Category</label><select id="m-cat" style="width:100%"><option value="">— keep —</option><option>Payroll</option><option>Other income</option><option>Bills</option><option>Credit Cards</option><option>Other debits</option><option value="debt">Debt payment</option></select></div></div>
+<div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-cat">Category</label><select id="m-cat" style="width:100%"><option value="">— keep —</option><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
 <div class="btnrow"><button class="btn-s" onclick="applyEdit()">Apply change to this entry</button><button class="btn-d" onclick="deleteEntry()">Delete entry</button></div>
 <div class="btnrow"><button class="btn-d" onclick="removeTxn()">Remove label</button></div>
 </div></div>
@@ -115,7 +115,7 @@ svg{display:block;width:100%}
 <div class="row"><h2 style="margin:0">Add entry</h2><button class="btn-s" style="padding:6px 10px" onclick="closeModal()">✕</button></div>
 <div class="tiny" style="margin-top:8px">Creates a new entry or recurring series without touching anything else in your plan.</div>
 <div class="row" style="gap:8px;margin-top:12px"><div style="flex:1"><label for="a-name">Name</label><input type="text" id="a-name" placeholder="e.g. Water bill"></div><div style="flex:1"><label for="a-amt">Amount</label><input type="number" step="0.01" id="a-amt"></div></div>
-<div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-dir">Direction</label><select id="a-dir" style="width:100%"><option value="out">Out (money going out)</option><option value="in">In (money coming in)</option></select></div><div style="flex:1"><label for="a-cat">Category</label><select id="a-cat" style="width:100%" onchange="document.getElementById('a-loanfields').style.display=this.value==='debt'?'block':'none'"><option>Other debits</option><option>Payroll</option><option>Other income</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
+<div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-dir">Direction</label><select id="a-dir" style="width:100%"><option value="out">Out (money going out)</option><option value="in">In (money coming in)</option></select></div><div style="flex:1"><label for="a-cat">Category</label><select id="a-cat" style="width:100%" onchange="document.getElementById('a-loanfields').style.display=this.value==='debt'?'block':'none'"><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
 <div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-freq">Frequency</label><select id="a-freq" style="width:100%" onchange="document.getElementById('a-dayrow').style.display=this.value==='once'?'none':'block'"><option value="once">Once</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div><div style="flex:1"><label for="a-start">Starts on</label><input type="date" id="a-start"></div></div>
 <div class="row" id="a-dayrow" style="gap:8px;margin-top:8px;display:none"><div style="flex:1"><label for="a-day">Day of month (1–31)</label><input type="number" id="a-day" min="1" max="31" value="1"></div></div>
 <div id="a-loanfields" style="display:none;border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
@@ -141,13 +141,13 @@ function taxOn(ds){if(!D.taxbill)return 0;const s=D.taxbill.series;let a=s[0],b=
  if(a===b)return a[1];
  const t=(new Date(ds)-new Date(a[0]))/(new Date(b[0])-new Date(a[0]));
  return a[1]+(b[1]-a[1])*t;}
-const CAT={'Other income':'income','Payroll':'income','Other debits':'dec','Bills':'dec','Tithe':'dec','Credit Cards':'dec','Affirm':'debt','Extra Debt Pay':'debt','Discover Loan':'debt','Loan Depot':'debt','IRS':'debt','HELOC':'debt'};const CATX={};
+const CAT={'Other income':'income','Payroll':'income','Other debits':'dec',/* legacy */'Bills':'dec','Tithe':'dec','Credit Cards':'dec','Affirm':'debt','Extra Debt Pay':'debt','Discover Loan':'debt','Loan Depot':'debt','IRS':'debt','HELOC':'debt'};const CATX={};
 const CAT_KIND={'Payroll':'income','Other income':'income','Bills':'dec','Credit Cards':'dec','Other debits':'dec','Tithe':'dec','Debt payment':'debt'};
 function catOf(k,amt){if(CATX[k]&&CAT_KIND[CATX[k]])return CAT_KIND[CATX[k]];if(CAT[k])return CAT[k];return (amt||0)>0?'income':'dec'}
 const DEBTN=['Affirm','Discover Loan','Loan Depot','IRS','HELOC','Extra Debt Pay'];
 const store=(()=>{try{const t='__cf_t';localStorage.setItem(t,t);localStorage.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
 function computeBal(d){const rows=[...d.rows].sort((a,b)=>a.date<b.date?-1:1);let b=(d.meta&&d.meta.startBal)||0;const out=[];for(const t of rows){for(const k in t){if(k!=='date')b+=t[k]}out.push([t.date,Math.round(b*100)/100])}return out}
-function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};d.bal=pl.bal&&pl.bal.length?pl.bal:computeBal(d);return d}
+function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};d.bal=computeBal(d);return d}
 const KEY='cfplan_v2';
 try{const saved=JSON.parse(store.getItem(KEY)||'null');if(saved&&saved.rows&&saved.rows.length&&saved.meta)D=applyPlan(saved)}catch(e){}
 const fmt=n=>{const s=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return (n<0?'-$':'$')+s};
@@ -156,7 +156,7 @@ const today=new Date();const dstr=today.toISOString().slice(0,10);
 document.getElementById('asof').textContent='Plan started '+D.bal[0][0]+' · today is '+(today.getMonth()+1)+'/'+today.getDate()+'/'+today.getFullYear();
 let balPts=D.bal; // [[date,bal]]
 function refreshBal(){balPts=D.bal;const t0=new Date();document.getElementById('asof').textContent='Plan started '+D.bal[0][0]+' · today is '+(t0.getMonth()+1)+'/'+t0.getDate()+'/'+t0.getFullYear()}
-function balOn(date){let lo=0,hi=balPts.length-1,r=balPts[0][1];
+function balOn(date){if(date<balPts[0][0])return (D.meta&&D.meta.startBal)||0;let r=balPts[0][1];
  for(let i=0;i<balPts.length;i++){if(balPts[i][0]<=date)r=balPts[i][1];else break} return r}
 function debtLastOf(){const r={};for(const k in D.series||{}){const s=D.series[k];let v=s[0][1];for(const p of s){if(p[0]<=dstr)v=p[1]}r[k]=v}return r}
 const DEBT_META={
@@ -259,7 +259,8 @@ function renderToday(){
  <div class="tiny" style="margin-top:14px">Tip: guided setup takes about 5 minutes.</div></div>`;
  return}
  const b=balOn(dstr);const tIrs=taxOn(dstr);
- const start=D.bal[0][1];
+ const start=(D.meta&&D.meta.startBal)||D.bal[0][1];
+ const startLbl=(D.meta&&D.meta.startBal)?'plan start':'start '+D.bal[0][0];
  const SUPD=suppressedKeys();
  const dl=debtLastOf();
  const totDebt=Object.entries(dl).filter(([k])=>k!=='Extra Debt Pay'&&!SUPD.includes(k)).reduce((a,[,v])=>a+v,0)+myDebts().reduce((a,d)=>a+uDebt(d).cur,0);
@@ -267,14 +268,14 @@ function renderToday(){
  const paid=startDebt-totDebt;
  const pct=Math.max(0,Math.min(100,startDebt?paid/startDebt*100:0));
  let h=`<div class="card"><div class="tiny">BANK BALANCE (PLAN)</div><div class="bal">${fmt(b)}</div>
- <div class="row" style="margin-top:6px"><span class="tiny">vs start ${D.bal[0][0]}</span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
+ <div class="row" style="margin-top:6px"><span class="tiny">vs ${startLbl}</span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
  ${tIrs>0?`<div class="row"><span class="tiny">IRS balance (accruing daily)</span><span class="num neg">${fmt(tIrs)}</span></div>`:''}</div>`;
  // upcoming 14 days
  const up=[];
- const from=new Date(dstr),until=new Date(from);until.setDate(until.getDate()+15);
+ const from=new Date(dstr),until=new Date(from);until.setDate(until.getDate()+30);
  for(const t of D.rows){const d=new Date(t.date+'T12:00:00');if(d>=from&&d<=until){for(const k in t){if(k==='date')continue;up.push({date:t.date,k,amt:t[k]})}}}
  up.sort((a,b)=>a.date<b.date?-1:1);
- h+=`<h2>Next 15 days</h2><div class="card">`;
+ h+=`<h2>Next 30 days</h2><div class="card">`;
  if(!up.length)h+=`<div class="tiny">Nothing scheduled</div>`;
  for(const u of up.slice(0,25)){const c=catOf(u.k,u.amt);const L=labelOf(u.k,u.amt,u.date);
   h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${L?L.label:u.k}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
@@ -506,7 +507,7 @@ function renderDebts(){
 // ---------- LEDGER ----------
 let filter='all';
 function renderTxns(){
- const cats=['all','income','Payroll','Other income','Bills','Credit Cards','Other debits','debt'];
+ const cats=['all','income','Payroll','Bills','Credit Cards','debt'];
  let h=`<div class="seg">`;
  for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='all'?'All':c}</button>`;
  function fmatch(k,amt){if(filter==='all')return true;if(CATX[k])return CATX[k]===filter;const c=CAT[k]||((amt||0)>0?'income':'dec');if(filter==='debt')return c==='debt';return false}
@@ -588,7 +589,7 @@ function addEntry(){
   }
  }
  CAT[name]=cat==='Payroll'||cat==='Other income'?'income':cat==='debt'?'debt':'dec';
- CATX[name]=cat||'Other debits';
+ if(cat)CATX[name]=cat;
  RULES.push({k:name,amt:Math.abs(isLoan?pay:amt),label:name,rec:isLoan||freq!=='once',day:freq!=='once'?day:undefined});
  saveStore();savePlan(D);closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()
 }
