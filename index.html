@@ -124,7 +124,7 @@ function taxOn(ds){if(!D.taxbill)return 0;const s=D.taxbill.series;let a=s[0],b=
  if(a===b)return a[1];
  const t=(new Date(ds)-new Date(a[0]))/(new Date(b[0])-new Date(a[0]));
  return a[1]+(b[1]-a[1])*t;}
-const CAT={ 'Other income':'income','Payroll':'income','Other debits':'dec','Bills':'dec','Tithe':'dec','Credit Cards':'dec','Affirm':'debt','Extra Debt Pay':'debt','Discover Loan':'debt','Loan Depot':'debt','IRS':'debt','HELOC':'debt' };
+const CAT={'Other income':'income','Payroll':'income','Other debits':'dec','Bills':'dec','Tithe':'dec','Credit Cards':'dec','Affirm':'debt','Extra Debt Pay':'debt','Discover Loan':'debt','Loan Depot':'debt','IRS':'debt','HELOC':'debt'};const CATX={};
 const DEBTN=['Affirm','Discover Loan','Loan Depot','IRS','HELOC','Extra Debt Pay'];
 const store=(()=>{try{const t='__cf_t';localStorage.setItem(t,t);localStorage.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
 function computeBal(d){const rows=[...d.rows].sort((a,b)=>a.date<b.date?-1:1);let b=(d.meta&&d.meta.startBal)||0;const out=[];for(const t of rows){for(const k in t){if(k!=='date')b+=t[k]}out.push([t.date,Math.round(b*100)/100])}return out}
@@ -227,8 +227,8 @@ function renderToday(){
  const paid=startDebt-totDebt;
  const pct=Math.max(0,Math.min(100,startDebt?paid/startDebt*100:0));
  let h=`<div class="card"><div class="tiny">BANK BALANCE (PLAN)</div><div class="bal">${fmt(b)}</div>
- <div class="row" style="margin-top:6px"><span class="tiny">vs start 6/1/26</span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
- <div class="row"><span class="tiny">IRS balance (accruing daily)</span><span class="num neg">${fmt(tIrs)}</span></div></div>`;
+ <div class="row" style="margin-top:6px"><span class="tiny">vs start ${D.bal[0][0]}</span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
+ ${tIrs>0?`<div class="row"><span class="tiny">IRS balance (accruing daily)</span><span class="num neg">${fmt(tIrs)}</span></div>`:''}</div>`;
  // upcoming 14 days
  const up=[];
  const from=new Date(dstr),until=new Date(from);until.setDate(until.getDate()+15);
@@ -470,18 +470,18 @@ function renderTxns(){
  const cats=['all','income','Payroll','Other income','Bills','Credit Cards','Other debits','Tithe','debt'];
  let h=`<div class="seg">`;
  for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='all'?'All':c}</button>`;
+ function fmatch(k){if(filter==='all')return true;if(filter==='income')return CAT[k]==='income';if(filter==='debt')return CAT[k]==='debt';if(CATX[k])return CATX[k]===filter;return k===filter||CAT[k]===filter}
  h+='</div>';
- h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="document.getElementById('gs').classList.toggle('off')">⚙ Guided setup</button></div>`;
+ h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="return openGuided()">⚙ Guided setup</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportRules()">⬆ Export rules</button><button class="btn-s" onclick="importRules()">⬇ Import rules</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
  let list=D.rows.slice().reverse();
- if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&(filter==='income'?CAT[k]==='income':k===filter)));
+ if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k)));
  h+=`<div class="card">`;
  if(!list.length)h+='<div class="tiny">No entries</div>';
  for(const t of list.slice(0,300)){
   for(const k in t){if(k==='date')continue;const c=CAT[k]||'dec';
-   if(filter!=='all'&&filter!=='income'&&k!==filter)continue;
-   if(filter==='income'&&CAT[k]!=='income')continue;
+   if(filter!=='all'&&!fmatch(k))continue;
    const L=labelOf(k,t[k],t.date);
    const nm=L?L.label:k;
    h+=`<div class="txn ttxn" onclick="editTxn('${t.date}','${k}',${t[k]})"><div><div>${nm}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${t.date}${L&&L.label!==k?' · '+k:''}</div></div><span class="num ${c==='income'?'pos':c==='debt'?'amb':'neg'}">${c==='income'?'+':''}${fmt(t[k])}</span></div>`}}
@@ -558,6 +558,7 @@ function buildPlan(){
   while(d<=end){const ds=d.toISOString().slice(0,10);(map[ds]=map[ds]||{})[it.name]=(map[ds][it.name]||0)+sign*it.amt;d=adv(d,it.freq,it.day)}
   CAT[it.name]=it.cat==='Payroll'||it.cat==='Other income'?'income':it.cat==='loan'?'debt':'dec';
   if(it.cat==='Tithe')CAT[it.name]='dec';
+  CATX[it.name]=it.cat;
  }
  const series={},interest={};
  const meta={startBal:sb,loans:{}};
