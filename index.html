@@ -214,7 +214,7 @@ function renderToday(){
  <div style="font-size:40px;line-height:1">💵</div>
  <div style="font-weight:700;font-size:17px;margin:10px 0 6px">Welcome to Count On It</div>
  <div class="tiny" style="max-width:340px;margin:0 auto 16px">This is your blank slate. Add the money coming in and going out — paycheck, rent, bills — and watch your balance project day by day.</div>
- <div class="btnrow" style="max-width:320px;margin:0 auto"><button class="btn-p" onclick="go('txns');document.getElementById('gs').classList.toggle('off')">⚙ Guided setup</button></div>
+ <div class="btnrow" style="max-width:320px;margin:0 auto"><button class="btn-p" onclick="return openGuided()">⚙ Guided setup</button></div>
  <div class="btnrow" style="max-width:320px;margin:8px auto 0"><button class="btn-s" onclick="pickFile()">📄 Import my spreadsheet</button></div>
  <div class="tiny" style="margin-top:14px">Tip: guided setup takes about 5 minutes.</div></div>`;
  return}
@@ -510,7 +510,8 @@ function showTrial(on){const b=document.getElementById('trialbar');if(!b)return;
 function isUnlocked(){const u=store.getItem(UKEY);return u==='paid'||u==='trial'}
 function emailSupport(){location.href='mailto:jeff@realanddigitaldeals.com?subject=Lost%20my%20Count%20On%20It%20code&body=Hi%20Jeff%2C%20I%20paid%20for%20Count%20On%20It%20but%20lost%20my%20unlock%20code.%20My%20name%20is%20';return false}
 function closeOb(){document.getElementById('onboard').classList.remove('on')}
-function showOb(){document.getElementById('onboard').classList.add('on');renderSetup()}
+function showOb(){document.getElementById('onboard').classList.add('on');if(isUnlocked())document.getElementById('buyrow').classList.add('off');renderSetup()}
+function openGuided(){showOb();document.getElementById('gs').classList.remove('off');document.getElementById('gs-sb').focus();return false}
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal[0][1]},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));closeOb()}
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
