@@ -115,7 +115,7 @@ svg{display:block;width:100%}
 <div class="row"><h2 style="margin:0">Add entry</h2><button class="btn-s" style="padding:6px 10px" onclick="closeModal()">✕</button></div>
 <div class="tiny" style="margin-top:8px">Creates a new entry or recurring series without touching anything else in your plan.</div>
 <div class="row" style="gap:8px;margin-top:12px"><div style="flex:1"><label for="a-name">Name</label><input type="text" id="a-name" placeholder="e.g. Water bill"></div><div style="flex:1"><label for="a-amt">Amount</label><input type="number" step="0.01" id="a-amt"></div></div>
-<div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-dir">Direction</label><select id="a-dir" style="width:100%"><option value="out">Out (money going out)</option><option value="in">In (money coming in)</option></select></div><div style="flex:1"><label for="a-cat">Category</label><select id="a-cat" style="width:100%" onchange="document.getElementById('a-loanfields').style.display=this.value==='debt'?'block':'none'"><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
+<div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-dir">Direction</label><select id="a-dir" style="width:100%"><option value="out">Out (money going out)</option><option value="in">In (money coming in)</option></select></div><div style="flex:1"><label for="a-cat">Category</label><select id="a-cat" style="width:100%" onchange="document.getElementById('a-loanfields').style.display=this.value==='debt'?'block':'none'"><option>Income</option><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
 <div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-freq">Frequency</label><select id="a-freq" style="width:100%" onchange="document.getElementById('a-dayrow').style.display=this.value==='once'?'none':'block'"><option value="once">Once</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div><div style="flex:1"><label for="a-start">Starts on</label><input type="date" id="a-start"></div></div>
 <div class="row" id="a-dayrow" style="gap:8px;margin-top:8px;display:none"><div style="flex:1"><label for="a-day">Day of month (1–31)</label><input type="number" id="a-day" min="1" max="31" value="1"></div></div>
 <div id="a-loanfields" style="display:none;border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
@@ -142,7 +142,7 @@ function taxOn(ds){if(!D.taxbill)return 0;const s=D.taxbill.series;let a=s[0],b=
  const t=(new Date(ds)-new Date(a[0]))/(new Date(b[0])-new Date(a[0]));
  return a[1]+(b[1]-a[1])*t;}
 const CAT={'Other income':'income','Payroll':'income','Other debits':'dec',/* legacy */'Bills':'dec','Tithe':'dec','Credit Cards':'dec','Affirm':'debt','Extra Debt Pay':'debt','Discover Loan':'debt','Loan Depot':'debt','IRS':'debt','HELOC':'debt'};const CATX={};
-const CAT_KIND={'Payroll':'income','Other income':'income','Bills':'dec','Credit Cards':'dec','Other debits':'dec','Tithe':'dec','Debt payment':'debt'};
+const CAT_KIND={'Income':'income','Payroll':'income','Other income':'income','Bills':'dec','Credit Cards':'dec','Other debits':'dec','Tithe':'dec','Debt payment':'debt'};
 function catOf(k,amt){if(CATX[k]&&CAT_KIND[CATX[k]])return CAT_KIND[CATX[k]];if(CAT[k])return CAT[k];return (amt||0)>0?'income':'dec'}
 const DEBTN=['Affirm','Discover Loan','Loan Depot','IRS','HELOC','Extra Debt Pay'];
 const store=(()=>{try{const t='__cf_t';localStorage.setItem(t,t);localStorage.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
@@ -206,7 +206,7 @@ function applyEdit(){
  const nd=document.getElementById('m-date').value;
  const nc=document.getElementById('m-cat').value;
  const signed=CUR.amt<0?-Math.abs(na):Math.abs(na);
- if(nc){CATX[CUR.k]=nc;if(nc==='Payroll'||nc==='Other income')CAT[CUR.k]='income';else if(nc==='debt')CAT[CUR.k]='debt';else CAT[CUR.k]='dec';saveStore()}
+ if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
  const oldKey=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  for(const t of D.rows)if(t.date===CUR.date&&t[CUR.k]!==undefined&&Math.abs(t[CUR.k]-CUR.amt)<0.01){
   if(nd&&nd!==t.date){const v=t[CUR.k];delete t[CUR.k];t.date=nd;t[CUR.k]=v}
@@ -511,7 +511,7 @@ function renderTxns(){
  let h=`<div class="seg">`;
  for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='all'?'All':c}</button>`;
  const FKIND={'Income':'income','Payroll':'income','Bills':'dec','Credit Cards':'dec','Debt':'debt'};
- function fmatch(k,amt){if(filter==='all')return true;const f=FKIND[filter]||filter.toLowerCase();const c=CATX[k]?(CAT_KIND[CATX[k]]||((amt||0)>0?'income':'dec')):(CAT[k]||((amt||0)>0?'income':'dec'));if(f==='dec')return c==='dec';if(f==='income')return c==='income';if(f==='debt')return c==='debt';if(filter==='Payroll')return CATX[k]==='Payroll'||CAT[k]==='Payroll';if(filter==='Bills')return CATX[k]==='Bills'||CAT[k]==='Bills';if(filter==='Credit Cards')return CATX[k]==='Credit Cards'||CAT[k]==='Credit Cards';return false}
+ function fmatch(k,amt){if(filter==='all')return true;const catx=CATX[k]||CAT[k]||null;const c=catx?(CAT_KIND[catx]||catx):((amt||0)>0?'income':'dec');if(filter==='Payroll')return catx==='Payroll';if(filter==='Bills')return catx==='Bills'||(c==='dec'&&!catx);if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false}
  h+='</div>';
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" id="orderbtn" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="return openGuidedWarn()">⚙ Guided setup</button></div>`;
@@ -589,8 +589,8 @@ function addEntry(){
    dd=freq==='once'?new Date('9999-12-31'):(freq==='weekly'?new Date(dd.getTime()+7*86400000):freq==='biweekly'?new Date(dd.getTime()+14*86400000):freq==='semimonthly'?nextOccFrom(freq,day,ds):advM(new Date(dd.getFullYear(),dd.getMonth()+1,1),day))
   }
  }
- CAT[name]=cat==='Payroll'||cat==='Other income'?'income':cat==='debt'?'debt':'dec';
- if(cat)CATX[name]=cat;
+ const cn=(cat==='debt'?'Debt payment':cat);CAT[name]=CAT_KIND[cn]||((sign*amt||0)>0?'income':'dec');
+ if(cat)CATX[name]=cn;
  RULES.push({k:name,amt:Math.abs(isLoan?pay:amt),label:name,rec:isLoan||freq!=='once',day:freq!=='once'?day:undefined});
  saveStore();savePlan(D);closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()
 }
