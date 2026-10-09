@@ -68,7 +68,7 @@ svg{display:block;width:100%}
   <div id="v-today"></div><div id="v-cal" class="hidden"></div><div id="v-month" class="hidden"></div><div id="v-debts" class="hidden"></div><div id="v-txns" class="hidden"></div>
 </div>
 <div id="trialbar" class="off" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 14px;font-size:13px;z-index:50"><span>Enjoying Count On It? <a href="#" onclick="location.href=BUY_URL;return false">Name your price →</a></span><button class="btn-s" style="float:right;padding:4px 10px;font-size:12px" onclick="this.parentNode.style.display='none'">✕</button></div>
-<div class="modal on" id="onboard" style="align-items:center" onclick="if(event.target===this&&isUnlocked())closeOb()"><div class="sheet" style="max-width:480px">
+<div class="modal" id="onboard" style="align-items:center" onclick="if(event.target===this&&isUnlocked())closeOb()"><div class="sheet" style="max-width:480px">
 <h2 style="margin-top:0">Welcome to Count On It — your cashflow plan</h2>
 <div class="tiny" style="margin-bottom:14px">See what your balance will do, day by day — no bank connections, everything stays on this device.</div>
 <div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:inline-block" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
@@ -126,7 +126,7 @@ function taxOn(ds){if(!D.taxbill)return 0;const s=D.taxbill.series;let a=s[0],b=
  return a[1]+(b[1]-a[1])*t;}
 const CAT={ 'Other income':'income','Payroll':'income','Other debits':'dec','Bills':'dec','Tithe':'dec','Credit Cards':'dec','Affirm':'debt','Extra Debt Pay':'debt','Discover Loan':'debt','Loan Depot':'debt','IRS':'debt','HELOC':'debt' };
 const DEBTN=['Affirm','Discover Loan','Loan Depot','IRS','HELOC','Extra Debt Pay'];
-const store=(()=>{try{const t='__cf_t';store.setItem(t,t);store.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
+const store=(()=>{try{const t='__cf_t';localStorage.setItem(t,t);localStorage.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
 function computeBal(d){const rows=[...d.rows].sort((a,b)=>a.date<b.date?-1:1);let b=(d.meta&&d.meta.startBal)||0;const out=[];for(const t of rows){for(const k in t){if(k!=='date')b+=t[k]}out.push([t.date,Math.round(b*100)/100])}return out}
 function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};d.bal=pl.bal&&pl.bal.length?pl.bal:computeBal(d);return d}
 const KEY='cfplan_v2';
@@ -505,7 +505,7 @@ function unlockCode(){
  alert("That code doesn't match. Your code arrives in the confirmation right after checkout on Stripe.");return false}
 function finishUnlock(){store.setItem(UKEY,'paid');blankIfEmpty();closeOb();return false}
 function startTrial(){store.setItem(UKEY,'trial');blankIfEmpty();closeOb();showTrial(true);return false}
-function blankIfEmpty(){if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:dstr()}]}));location.reload();return true}return false}
+function blankIfEmpty(){if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:dstr}]}));location.reload();return true}return false}
 function showTrial(on){const b=document.getElementById('trialbar');if(!b)return;b.style.display=on?'block':'none'}
 function isUnlocked(){const u=store.getItem(UKEY);return u==='paid'||u==='trial'}
 function emailSupport(){location.href='mailto:jeff@realanddigitaldeals.com?subject=Lost%20my%20Count%20On%20It%20code&body=Hi%20Jeff%2C%20I%20paid%20for%20Count%20On%20It%20but%20lost%20my%20unlock%20code.%20My%20name%20is%20';return false}
