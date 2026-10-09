@@ -82,7 +82,7 @@ svg{display:block;width:100%}
   <input type="text" id="si-name" placeholder="Name (e.g. Paycheck)">
   <input type="text" id="si-amt" inputmode="decimal" placeholder="Amount">
   <select id="si-dir"><option value="in">Money in</option><option value="out">Money out</option></select>
-  <select id="si-cat" onchange="document.getElementById('loan-fields').classList.toggle('off',this.value!=='loan')"><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="loan">Loan (with interest)</option></select>
+  <select id="si-cat" onchange="document.getElementById('loan-fields').classList.toggle('off',this.value!=='loan')"><option>Income</option><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="loan">Loan (with interest)</option></select>
   <select id="si-freq"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="semimonthly">Twice a month</option></select>
   <input type="text" id="si-day" inputmode="numeric" placeholder="Day of month (1-31)">
  </div>
@@ -107,7 +107,7 @@ svg{display:block;width:100%}
 <div id="m-hint" class="tiny" style="margin-top:6px"></div>
 <div class="btnrow"><button class="btn-p" onclick="saveTxn(true)">Save & apply to all matching</button><button class="btn-s" onclick="saveTxn(false)">Save this one</button></div>
 <div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-amt">Amount</label><input type="number" step="0.01" id="m-amt" style="width:100%"></div><div style="flex:1"><label for="m-date">Date</label><input type="date" id="m-date" style="width:100%"></div></div>
-<div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-cat">Category</label><select id="m-cat" style="width:100%"><option value="">— keep —</option><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
+<div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-cat">Category</label><select id="m-cat" style="width:100%"><option value="">— keep —</option><option>Income</option><option>Payroll</option><option>Bills</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
 <div class="btnrow"><button class="btn-s" onclick="applyEdit()">Apply change to this entry</button><button class="btn-d" onclick="deleteEntry()">Delete entry</button></div>
 <div class="btnrow"><button class="btn-d" onclick="removeTxn()">Remove label</button></div>
 </div></div>
@@ -507,10 +507,11 @@ function renderDebts(){
 // ---------- LEDGER ----------
 let filter='all';
 function renderTxns(){
- const cats=['all','income','Payroll','Bills','Credit Cards','debt'];
+ const cats=['all','Income','Payroll','Bills','Credit Cards','Debt'];
  let h=`<div class="seg">`;
  for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='all'?'All':c}</button>`;
- function fmatch(k,amt){if(filter==='all')return true;if(CATX[k])return CATX[k]===filter;const c=CAT[k]||((amt||0)>0?'income':'dec');if(filter==='debt')return c==='debt';return false}
+ const FKIND={'Income':'income','Payroll':'income','Bills':'dec','Credit Cards':'dec','Debt':'debt'};
+ function fmatch(k,amt){if(filter==='all')return true;const f=FKIND[filter]||filter.toLowerCase();const c=CATX[k]?(CAT_KIND[CATX[k]]||((amt||0)>0?'income':'dec')):(CAT[k]||((amt||0)>0?'income':'dec'));if(f==='dec')return c==='dec';if(f==='income')return c==='income';if(f==='debt')return c==='debt';if(filter==='Payroll')return CATX[k]==='Payroll'||CAT[k]==='Payroll';if(filter==='Bills')return CATX[k]==='Bills'||CAT[k]==='Bills';if(filter==='Credit Cards')return CATX[k]==='Credit Cards'||CAT[k]==='Credit Cards';return false}
  h+='</div>';
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" id="orderbtn" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="pickFile()">📄 Import spreadsheet</button><button class="btn-s" onclick="return openGuidedWarn()">⚙ Guided setup</button></div>`;
