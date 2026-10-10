@@ -223,7 +223,7 @@ function saveTxn(all){
  if(!CUR)return;const name=document.getElementById('m-name').value.trim();
  const recur=document.getElementById('m-recur').checked;
  const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
- if(!name){delete OVR[key];saveStore();closeModal();renderTxns();renderToday();return}
+ if(!name||name==='undefined'){delete OVR[key];saveStore();closeModal();renderTxns();renderToday();return}
  const na=parseFloat(document.getElementById('m-amt').value);
  const nd=document.getElementById('m-date').value;
  const nc=document.getElementById('m-cat').value;
@@ -298,7 +298,7 @@ function renderToday(){
  h+=`<h2>Next 30 days</h2><div class="card">`;
  if(!up.length)h+=`<div class="tiny">Nothing scheduled</div>`;
  for(const u of up.slice(0,25)){const c=catOf(u.k,u.amt);const L=labelOf(u.k,u.amt,u.date);
-  h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${L?L.label:u.k}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
+  h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${(L&&L.label&&!['undefined'].includes(L.label))?L.label:u.k}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
  if(up.length>25)h+=`<div class="tiny" style="padding-top:8px">+ ${up.length-25} more this period</div>`;
  h+='</div>';
  // debt snapshot
@@ -546,7 +546,7 @@ function renderTxns(){
   for(const k in t){if(k==='date')continue;const c=catOf(k,t[k]);
    if(filter!=='all'&&!fmatch(k,t[k]))continue;
    const L=labelOf(k,t[k],t.date);
-   const nm=L?L.label:k;
+   const nm=(L&&L.label&&L.label!=='undefined')?L.label:k;
    const cls=t[k]>0?'pos':'neg';
    h+=`<div class="txn ttxn" onclick="editTxn('${t.date}','${k}',${t[k]})"><div><div>${nm}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${t.date}${L&&L.label!==k?' · '+k:''}</div></div><span class="num ${cls}">${t[k]>0?'+':''}${fmt(t[k])}</span></div>`}}
  h+=renderRules();
