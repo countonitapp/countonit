@@ -390,21 +390,23 @@ function renderMonth(){
  let h='';
  // category breakdown last 3 months
  const months=Object.keys(byM).sort();
- const recent=months.slice(-6);
+ const ymNow=dstr.slice(0,7);
+ const recent=months.filter(mk=>mk>=ymNow).slice(0,6);
  const catTot={};
  for(const mk of recent)for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;
   for(const k in t){if(k==='date')continue;const c=catOf(k,t[k]);if(c==='income')continue;if(k==='Extra Debt Pay')continue;catTot[k]=(catTot[k]||0)+t[k]}}
  h+=`<h2>Spending by category — last 6 plan-months</h2><div class="card">`;
  const mx=Math.max(...Object.values(catTot),1);
  const sorted=Object.entries(catTot).sort((a,b)=>b[1]-a[1]);
- for(const [k,v] of sorted){const c=catOf(k,v);
+ for(const [k,v] of sorted){const c=catOf(k,Math.abs(v)||1);
   h+=`<div class="row" style="margin:8px 0"><div style="flex:1"><div class="row"><span style="font-size:13px">${k}</span><span class="num" style="font-size:13px">${fmtK(v/6)}</span></div><div class="bar"><i style="width:${v/mx*100}%;background:${c==='debt'?'var(--amber)':'var(--acc)'}"></i></div></div></div>`}
  h+=`<div class="tiny">Averages per month</div></div>`;
  // monthly table
  h+=`<h2>Monthly net</h2><div class="card"><table><tr><th>Month</th><th class="r">In</th><th class="r">Out</th><th class="r">Net</th><th class="r">End bal</th></tr>`;
- for(const mk of months){
+ for(const mk of months.slice(0,36)){
   const b=byM[mk];const end=balOn(mk+'-28');
-  h+=`<tr><td>${mk}</td><td class="r pos">${fmtK(b.inc)}</td><td class="r">${fmtK(-(b.dec+b.debt))}</td><td class="r ${b.inc-b.dec-b.debt>=0?'pos':'neg'}">${fmtK(b.inc-b.dec-b.debt)}</td><td class="r">${fmtK(end)}</td></tr>`}
+  const net=b.inc+b.dec+b.debt;
+  h+=`<tr><td>${mk}</td><td class="r pos">${fmtK(b.inc)}</td><td class="r">${fmtK(-(b.dec+b.debt))}</td><td class="r ${net>=0?'pos':'neg'}">${fmtK(net)}</td><td class="r">${fmtK(end)}</td></tr>`}
  h+='</table></div>';
  document.getElementById('v-month').innerHTML=h;
 }
