@@ -174,12 +174,13 @@ function go(v){['today','cal','month','debts','txns'].forEach(x=>document.getEle
 // ---------- LABELS & RECURRING ----------
 let RULES=[];let OVR={};
 try{RULES=JSON.parse(store.getItem('cfrules')||'[]');OVR=JSON.parse(store.getItem('cfrcov')||'{}');const sx=JSON.parse(store.getItem('cfrcatx')||'{}');for(const k in sx)CATX[k]=sx[k]}catch(e){}
+RULES=RULES.filter(r=>r&&r.k&&r.label&&r.label!=='undefined');for(const kk in OVR)if(!OVR[kk]||OVR[kk]==='undefined')delete OVR[kk];
 function saveStore(){store.setItem('cfrules',JSON.stringify(RULES));store.setItem('cfrcov',JSON.stringify(OVR));store.setItem('cfrcatx',JSON.stringify(CATX))}
 function dayDist(date,day){const d=new Date(date+'T12:00:00');const dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const dd=Math.min(day,dim);let x=Math.abs(d.getDate()-dd);return Math.min(x,Math.abs(d.getDate()-dd-0)+0,x)}
 function matchRule(k,amt){return RULES.find(r=>r.k===k)}
 function labelOf(k,amt,date){
  const o=OVR[date+'|'+k+'|'+amt];if(o)return{o,rec:false};
- const r=matchRule(k,amt);if(!r)return null;
+ const r=matchRule(k,amt);if(!r||!r.label)return null;
  if(r.recur&&dayDist(date,r.day)>2&&!r.anchorEvery)return{label:r.label,rec:false};
  return{label:r.label,rec:r.recur}}
 function matchesOf(k,amt){return D.rows.filter(t=>t[k]!==undefined&&Math.abs(Math.abs(t[k])-amt)<0.01)}
