@@ -223,14 +223,27 @@ function saveTxn(all){
  const recur=document.getElementById('m-recur').checked;
  const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  if(!name){delete OVR[key];saveStore();closeModal();renderTxns();renderToday();return}
+ const na=parseFloat(document.getElementById('m-amt').value);
+ const nd=document.getElementById('m-date').value;
+ const nc=document.getElementById('m-cat').value;
+ const signed=CUR.amt<0?-Math.abs(na):Math.abs(na);
  if(all){
   const n=D.rows.filter(t=>t[CUR.k]!==undefined).length;
   let r=RULES.find(x=>x.k===CUR.k);
   if(!r){r={k:CUR.k,amt:Math.abs(CUR.amt)};RULES.push(r)}
   r.label=name;r.recur=recur;r.day=new Date(CUR.date+'T12:00:00').getDate();
-  for(const t of D.rows)if(t[CUR.k]!==undefined)delete OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]];
-  saveStore();closeModal();renderTxns();renderToday();
-  if(n>1)setTimeout(()=>alert('Labeled '+n+' entries as "'+name+'"'),50);
+  const newDay=nd?parseInt(nd.slice(8,10),10):null;
+  let chg=0;
+  for(const t of D.rows)if(t[CUR.k]!==undefined){
+   const oldK=t.date+'|'+CUR.k+'|'+t[CUR.k];
+   if(na&&Math.abs(t[CUR.k]-signed)>0.005){t[CUR.k]=signed;chg++}
+   if(newDay&&new Date(t.date+'T12:00:00').getDate()!==newDay){
+    const dt=new Date(t.date+'T12:00:00');const dim=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
+    t.date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(Math.min(newDay,dim)).padStart(2,'0');}
+   delete OVR[oldK];delete OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]];OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]]=name;}
+  if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
+  saveStore();savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderTxns();renderToday();renderCal();renderMonth();renderDebts();
+  setTimeout(()=>alert('Applied to '+n+' entries'+(chg?' ('+chg+' amounts corrected)':'')+' as "'+name+'"'),50);
  }else{OVR[key]=name;saveStore();closeModal();renderTxns();renderToday()}
 }
 function removeTxn(){if(!CUR)return;const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
