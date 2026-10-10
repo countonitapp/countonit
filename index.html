@@ -176,7 +176,7 @@ let RULES=[];let OVR={};
 try{RULES=JSON.parse(store.getItem('cfrules')||'[]');OVR=JSON.parse(store.getItem('cfrcov')||'{}');const sx=JSON.parse(store.getItem('cfrcatx')||'{}');for(const k in sx)CATX[k]=sx[k]}catch(e){}
 function saveStore(){store.setItem('cfrules',JSON.stringify(RULES));store.setItem('cfrcov',JSON.stringify(OVR));store.setItem('cfrcatx',JSON.stringify(CATX))}
 function dayDist(date,day){const d=new Date(date+'T12:00:00');const dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const dd=Math.min(day,dim);let x=Math.abs(d.getDate()-dd);return Math.min(x,Math.abs(d.getDate()-dd-0)+0,x)}
-function matchRule(k,amt){return RULES.find(r=>r.k===k&&Math.abs(r.amt-Math.abs(amt))<0.01)}
+function matchRule(k,amt){return RULES.find(r=>r.k===k)}
 function labelOf(k,amt,date){
  const o=OVR[date+'|'+k+'|'+amt];if(o)return{o,rec:false};
  const r=matchRule(k,amt);if(!r)return null;
@@ -224,12 +224,14 @@ function saveTxn(all){
  const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  if(!name){delete OVR[key];saveStore();closeModal();renderTxns();renderToday();return}
  if(all){
-  let r=RULES.find(x=>x.k===CUR.k&&Math.abs(x.amt-Math.abs(CUR.amt))<0.01);
+  const n=D.rows.filter(t=>t[CUR.k]!==undefined).length;
+  let r=RULES.find(x=>x.k===CUR.k);
   if(!r){r={k:CUR.k,amt:Math.abs(CUR.amt)};RULES.push(r)}
   r.label=name;r.recur=recur;r.day=new Date(CUR.date+'T12:00:00').getDate();
-  delete OVR[key];
- }else{OVR[key]=name}
- saveStore();closeModal();renderTxns();renderToday();
+  for(const t of D.rows)if(t[CUR.k]!==undefined)delete OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]];
+  saveStore();closeModal();renderTxns();renderToday();
+  if(n>1)setTimeout(()=>alert('Labeled '+n+' entries as "'+name+'"'),50);
+ }else{OVR[key]=name;saveStore();closeModal();renderTxns();renderToday()}
 }
 function removeTxn(){if(!CUR)return;const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  delete OVR[key];
@@ -518,11 +520,11 @@ function renderTxns(){
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="exportRules()">⬆ Export rules</button><button class="btn-s" onclick="importRules()">⬇ Import rules</button></div>`;
  h+=`<div class="seg" style="margin-top:8px"><button class="btn-s" onclick="saveBackup()">💾 Save backup</button><button class="btn-s" onclick="exportPlan()">⬆ Export plan</button><button class="btn-s" onclick="openAdd()">➕ Add entry</button><label class="btn-s" style="display:inline-block;cursor:pointer">⬇ Import plan<input type="file" id="plan-file" accept=".json,application/json" style="display:none" onchange="importPlanFile(this)"></label><button class="btn-s" onclick="startOver()">↺ Switch plan</button></div>`;
  let list=D.rows.slice().sort((a,b)=>txnNewest?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
- if(txnNewest){const fut=list.filter(t=>t.date>=dstr),past=list.filter(t=>t.date<dstr);list=fut.concat(past)}
+ if(txnNewest){const fut=list.filter(t=>t.date>=dstr).sort((a,b)=>a.date.localeCompare(b.date)),past=list.filter(t=>t.date<dstr).sort((a,b)=>b.date.localeCompare(a.date));list=fut.concat(past)}
  if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k,t[k])));
  h+=`<div class="card">`;
  if(!list.length)h+='<div class="tiny">No entries</div>';
- for(const t of list.slice(0,300)){
+ for(const t of list.slice(0,5000)){
   for(const k in t){if(k==='date')continue;const c=catOf(k,t[k]);
    if(filter!=='all'&&!fmatch(k,t[k]))continue;
    const L=labelOf(k,t[k],t.date);
@@ -562,13 +564,13 @@ function addEntry(){
  if(isLoan&&!bal){alert('Enter the current balance for a debt');return}
  if(isLoan&&!pay){alert('Enter a monthly payment for the debt — or add it as a regular bill instead');return}
  const sign=dir==='in'?1:-1;
- const end=new Date();end.setMonth(end.getMonth()+42);
+ const end=new Date();end.setMonth(end.getMonth()+120);
  if(isLoan){
   // register the debt (interest optional) and generate payment rows until payoff
   myDebts().push({name,bal,apr,pay,day:pday,start});
   persistDebts();
   let b=bal,mo=0,pd=nextOccFrom('monthly',pday,start);
-  while(b>0.5&&mo<420){
+  while(b>0.5&&mo<600){
    const ds=pd.toISOString().slice(0,10);
    if(ds<=end.toISOString().slice(0,10)){
     let row=D.rows.find(r=>r.date===ds);
@@ -670,7 +672,7 @@ function nextOcc(freq,day,from){
 }
 function buildPlan(){
  const sb=parseFloat(document.getElementById('gs-sb').value)||0;
- const end=new Date();end.setMonth(end.getMonth()+42);
+ const end=new Date();end.setMonth(end.getMonth()+120);
  const map={};
  for(const it of SETUP){
   if(it.cat==='loan')continue;
@@ -688,7 +690,7 @@ function buildPlan(){
   meta.debts.push({name:it.name,bal:it.bal,apr:it.apr,pay:it.amt,day:it.day,start:it.date||dstr});
   let bal=it.bal,mo=0,total=0;
   let dcur=nextOcc(it.freq||'monthly',it.day,(it.date||dstr));
-  while(bal>0.5&&mo<420){
+  while(bal>0.5&&mo<600){
    const ds=dcur.toISOString().slice(0,10);
    const int_=bal*it.apr/1200;total+=int_;
    const pay=Math.min(it.amt,bal+int_);bal=bal+int_-pay;
