@@ -189,7 +189,7 @@ function editTxn(date,k,amt){
  document.getElementById('addmodal').classList.remove('on');
  const m=labelOf(k,amt,date);
  document.getElementById('m-info').textContent=k+' · '+date+' · '+fmt(amt);
- document.getElementById('m-name').value=m?m.label:'';
+ document.getElementById('m-name').value=m?m.label:k;
  const ms=matchesOf(k,Math.abs(amt));
  const near=ms.filter(t=>dayDist(t.date,new Date(date+'T12:00:00').getDate())<=2);
  document.getElementById('m-recur').checked=!!(m&&m.rec)||(ms.length>=3&&near.length>=3);
@@ -232,14 +232,18 @@ function saveTxn(all){
   let r=RULES.find(x=>x.k===CUR.k);
   if(!r){r={k:CUR.k,amt:Math.abs(CUR.amt)};RULES.push(r)}
   r.label=name;r.recur=recur;r.day=new Date(CUR.date+'T12:00:00').getDate();
-  const newDay=nd?parseInt(nd.slice(8,10),10):null;
+  const cdt=new Date(CUR.date+'T12:00:00'),ndt=nd?new Date(nd+'T12:00:00'):null;
+  const newDay=nd?ndt.getDate():null;
+  const dmon=nd?((ndt.getFullYear()-cdt.getFullYear())*12+(ndt.getMonth()-cdt.getMonth())):null;
   let chg=0;
   for(const t of D.rows)if(t[CUR.k]!==undefined){
    const oldK=t.date+'|'+CUR.k+'|'+t[CUR.k];
    if(na&&Math.abs(t[CUR.k]-signed)>0.005){t[CUR.k]=signed;chg++}
-   if(newDay&&new Date(t.date+'T12:00:00').getDate()!==newDay){
-    const dt=new Date(t.date+'T12:00:00');const dim=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
-    t.date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(Math.min(newDay,dim)).padStart(2,'0');}
+   if(dmon||newDay){
+    const dt=new Date(t.date+'T12:00:00');
+    if(dmon)dt.setMonth(dt.getMonth()+dmon);
+    const dim=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
+    t.date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(newDay?Math.min(newDay,dim):Math.min(dt.getDate(),dim)).padStart(2,'0');}
    delete OVR[oldK];delete OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]];OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]]=name;}
   if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
   saveStore();savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderTxns();renderToday();renderCal();renderMonth();renderDebts();
