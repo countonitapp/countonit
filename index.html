@@ -211,8 +211,18 @@ function applyEdit(){
  if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
  const oldKey=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  for(const t of D.rows)if(t.date===CUR.date&&t[CUR.k]!==undefined&&Math.abs(t[CUR.k]-CUR.amt)<0.01){
-  if(nd&&nd!==t.date){const v=t[CUR.k];delete t[CUR.k];t.date=nd;t[CUR.k]=v}
-  t[CUR.k]=signed;break}
+  if(nd&&nd!==t.date){
+   const v=t[CUR.k];delete t[CUR.k];
+   if(Object.keys(t).length>1){ // other entries share this date: move only this one
+    let r2=D.rows.find(x=>x.date===nd&&x[CUR.k]===undefined);
+    if(!r2){r2={date:nd};D.rows.push(r2)}
+    r2[CUR.k]=v
+   } else {t.date=nd;t[CUR.k]=v}
+   D.rows=D.rows.filter(x=>Object.keys(x).length>1)
+  }
+  if(!nd){const t2=D.rows.find(x=>x.date===CUR.date);if(t2)t2[CUR.k]=signed}
+  else {const t2=D.rows.find(x=>x.date===nd);if(t2)t2[CUR.k]=signed}
+  break}
  const na2=document.getElementById('m-name').value.trim();
  if(na2){const newKey=(nd||CUR.date)+'|'+CUR.k+'|'+signed;OVR[newKey]=na2;saveStore()}
  savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderToday();renderCal();renderMonth();renderDebts();renderTxns()}
@@ -264,12 +274,35 @@ function saveTxn(all){
     const dt=new Date(t.date+'T12:00:00');
     if(dmon)dt.setMonth(dt.getMonth()+dmon);
     const dim=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
-    t.date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(newDay?Math.min(newDay,dim):Math.min(dt.getDate(),dim)).padStart(2,'0');}
-   delete OVR[oldK];delete OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]];OVR[t.date+'|'+CUR.k+'|'+t[CUR.k]]=name;}
+    const nDate=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(newDay?Math.min(newDay,dim):Math.min(dt.getDate(),dim)).padStart(2,'0');
+    const v=t[CUR.k];delete t[CUR.k];
+    if(Object.keys(t).length>1){ // other entries share this date: move only this one
+     let r2=D.rows.find(x=>x.date===nDate&&x[CUR.k]===undefined);
+     if(!r2){r2={date:nDate};D.rows.push(r2)}
+     r2[CUR.k]=v
+    } else {t.date=nDate;t[CUR.k]=v}
+    t._newDate=nDate}
+   const effDate=t._newDate||t.date;
+   delete OVR[oldK];delete OVR[effDate+'|'+CUR.k+'|'+t[CUR.k]];OVR[effDate+'|'+CUR.k+'|'+t[CUR.k]]=name;delete t._newDate}
   if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
+  D.rows=D.rows.filter(t=>Object.keys(t).length>1);
+  D.rows.sort((a,b)=>a.date<b.date?-1:1);
   saveStore();savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderTxns();renderToday();renderCal();renderMonth();renderDebts();
   setTimeout(()=>alert('Applied to '+n+' entries'+(chg?' ('+chg+' amounts corrected)':'')+' as "'+name+'"'),50);
- }else{OVR[key]=name;saveStore();closeModal();renderTxns();renderToday()}
+ }else{
+  // single edit: apply amount and date to just this occurrence
+  for(const t of D.rows)if(t.date===CUR.date&&t[CUR.k]!==undefined&&Math.abs(t[CUR.k]-CUR.amt)<0.01){
+   const v=t[CUR.k];delete t[CUR.k];
+   if(nd&&nd!==t.date){
+    if(Object.keys(t).length>1){let r2=D.rows.find(x=>x.date===nd&&x[CUR.k]===undefined);if(!r2){r2={date:nd};D.rows.push(r2)}r2[CUR.k]=v}
+    else {t.date=nd;t[CUR.k]=v}
+   } else {t[CUR.k]=v}
+   if(nd&&nd!==t.date){const t2=D.rows.find(x=>x.date===nd);if(t2)t2[CUR.k]=signed}
+   else {t[CUR.k]=signed}
+   break}
+  if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
+  const newKey=(nd||CUR.date)+'|'+CUR.k+'|'+signed;OVR[newKey]=name;
+  saveStore();savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderTxns();renderToday();renderCal();renderMonth();renderDebts()}
 }
 function removeTxn(){if(!CUR)return;const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  delete OVR[key];
