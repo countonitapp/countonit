@@ -288,6 +288,13 @@ function exportRules(){const s=JSON.stringify({rules:RULES,overrides:OVR},null,1
 function importRules(){const s=prompt('Paste rules JSON:');if(!s)return;try{const o=JSON.parse(s);if(o.rules)RULES=o.rules;if(o.overrides)OVR=o.overrides;saveStore();renderTxns();renderToday();alert('Imported '+RULES.length+' rules')}catch(e){alert('Invalid JSON')}}
 
 // ---------- TODAY ----------
+function editStartBal(){
+ const cur=(D.meta&&D.meta.startBal!=null)?D.meta.startBal:0;
+ const v=prompt('Starting balance (the balance before any entries in this plan):',cur);
+ if(v==null)return;const n=parseFloat(String(v).replace(/[$,]/g,''));
+ if(isNaN(n)){alert('Enter a number, e.g. 4967.31');return}
+ D.meta=D.meta||{};D.meta.startBal=Math.round(n*100)/100;
+ D.bal=computeBal(D);refreshBal();renderToday();renderCal();renderMonth();renderDebts();alert('Starting balance set to '+fmt(D.meta.startBal))}
 function renderToday(){
  const blank=D.rows.length<2&&Object.keys(D.series||{}).length===0;
  if(blank){document.getElementById('v-today').innerHTML=`<div class="card" style="text-align:center;padding:28px 16px">
@@ -308,7 +315,7 @@ function renderToday(){
  const paid=startDebt-totDebt;
  const pct=Math.max(0,Math.min(100,startDebt?paid/startDebt*100:0));
  let h=`<div class="card"><div class="tiny">BANK BALANCE (PLAN)</div><div class="bal">${fmt(b)}</div>
- <div class="row" style="margin-top:6px"><span class="tiny">vs ${startLbl}</span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
+ <div class="row" style="margin-top:6px"><span class="tiny"><a href="#" onclick="editStartBal();return false" style="text-decoration:underline">vs ${startLbl} (tap to edit)</a></span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
  ${tIrs>0?`<div class="row"><span class="tiny">IRS balance (accruing daily)</span><span class="num neg">${fmt(tIrs)}</span></div>`:''}</div>`;
  // upcoming 14 days
  const up=[];
