@@ -148,7 +148,12 @@ function catOf(k,amt){if(CATX[k]&&CAT_KIND[CATX[k]])return CAT_KIND[CATX[k]];if(
 const DEBTN=['Affirm','Discover Loan','Loan Depot','IRS','HELOC','Extra Debt Pay'];
 const store=(()=>{try{const t='__cf_t';localStorage.setItem(t,t);localStorage.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
 function computeBal(d){const rows=[...d.rows].sort((a,b)=>a.date<b.date?-1:1);let b=(d.meta&&d.meta.startBal)||0;const out=[];for(const t of rows){for(const k in t){if(k!=='date')b+=t[k]}out.push([t.date,Math.round(b*100)/100])}return out}
-function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};d.bal=computeBal(d);return d}
+function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};
+ // merge rows that share a date (self-heal duplicate rows from older builds)
+ const byDate={};const merged=[];
+ for(const r of d.rows){if(!byDate[r.date]){byDate[r.date]=r;merged.push(r)}else{const tgt=byDate[r.date];for(const k in r){if(k==='date')continue;tgt[k]=(tgt[k]||0)+r[k]}}}
+ d.rows=merged;
+ d.bal=computeBal(d);return d}
 const KEY='cfplan_v2';
 try{const saved=JSON.parse(store.getItem(KEY)||'null');if(saved&&saved.rows&&saved.rows.length&&saved.meta)D=applyPlan(saved)}catch(e){}
 const fmt=n=>{const s=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return (n<0?'-$':'$')+s};
