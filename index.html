@@ -469,7 +469,7 @@ function renderMonth(){
  // monthly table
  h+=`<h2>Monthly net</h2><div class="card"><table><tr><th>Month</th><th class="r">In</th><th class="r">Out</th><th class="r">Net</th><th class="r">End bal</th></tr>`;
  for(const mk of months.slice(0,36)){
-  const b=byM[mk];const end=balOn(mk+'-28');
+  const b=byM[mk];const lastD=new Date(Number(mk.slice(0,4)),Number(mk.slice(5,7)),0).getDate();const end=balOn(mk+'-'+String(lastD).padStart(2,'0'));
   const net=b.inc+b.dec+b.debt;
   h+=`<tr><td>${mk}</td><td class="r pos">${fmtK(b.inc)}</td><td class="r">${fmtK(-(b.dec+b.debt))}</td><td class="r ${net>=0?'pos':'neg'}">${fmtK(net)}</td><td class="r">${fmtK(end)}</td></tr>`}
  h+='</table></div>';
