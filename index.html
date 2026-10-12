@@ -482,15 +482,40 @@ let DE_EDIT=null;
 function myDebts(){if(!D)D={};if(!D.meta)D.meta={};if(!D.meta.debts)D.meta.debts=[];return D.meta.debts}
 function persistDebts(){const saved=JSON.parse(store.getItem(KEY)||'null');if(saved){saved.meta=saved.meta||{};saved.meta.debts=D.meta.debts||[];store.setItem(KEY,JSON.stringify(saved))}else store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal?D.bal[0][1]:0,start:'2026-06-01',builtin:true},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal,debts:D.meta.debts}))}
 function uDebt(d){
+ // collect extra payments from the ledger: entries named "<Debt> extra" (e.g. "IRS extra pay")
+ const extras={};
+ if(D&&D.rows)for(const r of D.rows){for(const k in r){if(k==='date')continue;
+  const nk=k.toLowerCase().replace(/ extra.*$/,'').trim();
+  if(nk===d.name.toLowerCase()&&/ extra/i.test(k)&&r[k]<0)extras[r.date]=(extras[r.date]||0)-r[k]}}
  const st=new Date(d.start+'T12:00:00');
  const stop=d.closed?new Date(d.closed+'T12:00:00'):new Date(dstr+'T12:00:00');
  const day=Math.min(d.day||15,28);
- let bal=d.bal,int_=0;
- let p=new Date(st.getFullYear(),st.getMonth(),day);if(p<st)p.setMonth(p.getMonth()+1);
- while(p<=stop){const intx=bal*d.apr/1200;int_+=intx;bal=bal+intx-Math.min(d.pay,bal+intx);if(bal<=0.5){bal=0;break}p.setMonth(p.getMonth()+1)}
- let payoff=d.closed||null;
+ const ldate=z=>z.getFullYear()+'-'+String(z.getMonth()+1).padStart(2,'0')+'-'+String(z.getDate()).padStart(2,'0');
+ // unified daily-accrual projection: interest accrues daily (apr/365), payments applied on their actual dates
+ // until = cap date; stop = "today" cutoff for interest accounting
+ function sim(until){
+  const r=d.apr/36500;
+  // scheduled payment dates: d.day each month from start; extras: their ledger dates
+  const pays=[];let pm=new Date(st.getFullYear(),st.getMonth(),day);if(pm<st)pm.setMonth(pm.getMonth()+1);
+  while(pm<=until){pays.push({d:ldate(pm),a:d.pay});pm.setMonth(pm.getMonth()+1)}
+  for(const ds in extras)pays.push({d:ds.slice(0,10),a:extras[ds]});
+  pays.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
+  let bal=d.bal,int_=0,pi=0;
+  let cur=new Date(st.getTime());
+  while(bal>0.5&&cur<=until){
+   const cd=ldate(cur);
+   while(pi<pays.length&&pays[pi].d<=cd){const p=pays[pi++];bal-=p.a;if(bal<=0.5){return{bal:0,int_,last:cur}}}
+   if(bal>0){const intx=bal*r;if(cd<=ldate(stop))int_+=intx;bal+=intx}
+   cur.setDate(cur.getDate()+1)}
+  return{bal,int_,last:null}}
+ const cap=new Date(stop.getFullYear()+110,0,1);
+ const now=sim(stop),end=sim(cap);
+ let payoff=d.closed||null,bal=now.bal,int_=now.int_;
+ // extras already paid (on or before today) always reduce the current balance
+ if(!d.closed)for(const ds in extras){if(ds.slice(0,10)<=ldate(stop))bal-=extras[ds]}
  if(d.closed)bal=0;
- let slow=false;if(!payoff&&bal>0.5){let b=bal,pp=new Date(Math.max(p.getTime(),stop.getTime()));for(let i=0;i<1200;i++){const intx=b*d.apr/1200;b=b+intx-Math.min(d.pay,b+intx);pp.setMonth(pp.getMonth()+1);if(b<=0.5){payoff=pp.toISOString().slice(0,10);break}}if(!payoff)slow=true}
+ if(!payoff&&end.bal<=0.5&&end.last)payoff=end.last.toISOString().slice(0,10);
+ const slow=!payoff&&end.bal>0.5;
  return{cur:Math.round(bal*100)/100,interest:Math.round(int_*100)/100,payoff,slow,moInt:d.bal*d.apr/1200}}
 function suppressedKeys(){const u=myDebts().map(x=>x.name);return D.series?Object.keys(D.series).filter(k=>u.includes(k)||(DEBT_META[k]&&u.includes(DEBT_META[k].label))):[]}
 function editDebt(i){DE_EDIT=i<myDebts().length?Object.assign({},myDebts()[i]):{i:-1,name:'',bal:'',apr:'',pay:'',day:15,start:dstr};DE_EDIT.i=i;renderDebts()}
