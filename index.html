@@ -465,7 +465,7 @@ function renderMonth(){
  const dim=new Date(LY,LM+1,0).getDate();
  const todayD=Number(dstr.slice(8,10));
  h+=`<h2 style="display:flex;align-items:center;gap:10px"><button class="btn" style="padding:2px 10px" onclick="shiftLedger(-1)">‹</button>${mName}<button class="btn" style="padding:2px 10px" onclick="shiftLedger(1)">›</button><span class="tiny" style="margin-left:auto">Daily ledger — tap a day for detail</span></h2><div class="card">`;
- const byDay={};for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;byDay[t.date]=t}
+ const byDay={};for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;(byDay[t.date]=byDay[t.date]||[]).push(t)}
  const dayBal=dd=>balOn(dd);
  const startBal=balOn(`${LY}-${String(LM+1).padStart(2,'0')}-01`);
  h+=`<div class="tiny" style="margin:4px 0 10px">Balance entering the month: <b class="num">${fmt(startBal)}</b></div>`;
@@ -475,7 +475,7 @@ function renderMonth(){
   const wd=new Date(dd+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
   const isToday=dd===dstr;
   let items=[];let net=0;
-  if(t){for(const k in t){if(k==='date')continue;items.push([k,t[k]])}net=items.reduce((s,[,v])=>s+v,0)}
+  if(t){for(const r of t){for(const k in r){if(k==='date')continue;items.push([k,r[k]])}}net=items.reduce((s,[,v])=>s+v,0)}
   const bal=dayBal(dd);
   const open=isToday||window._openDays===dd;
   h+=`<div style="border-left:3px solid ${isToday?'var(--acc)':'transparent'};border-radius:6px;background:${isToday?'rgba(255,255,255,.04)':'none'}">`;
