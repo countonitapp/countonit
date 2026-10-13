@@ -76,10 +76,11 @@ svg{display:block;width:100%}
 <div class="modal" id="onboard" style="align-items:center" onclick="if(event.target===this&&isUnlocked())closeOb()"><div class="sheet" style="max-width:480px">
 <h2 style="margin-top:0">Welcome to Count On It — your cashflow plan</h2>
 <div class="tiny" style="margin-bottom:14px">See what your balance will do, day by day — no bank connections, everything stays on this device.</div>
-<div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:inline-block" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
-<div class="tiny" style="margin:0 0 10px">Pay what you want, $1 minimum. One-time purchase, yours forever.</div>
-<div style="display:flex;gap:8px;margin:2px 0 4px"><input type="text" id="code-in" placeholder="Purchase code" style="flex:1;margin:0" onkeydown="if(event.key==='Enter')unlockCode()"><button class="btn-p" onclick="return unlockCode()" style="flex:none">Unlock</button></div>
-<div class="tiny" style="margin:2px 0 10px">Already paid? Your code is on the confirmation screen right after checkout (click "Return to merchant" if you closed it). Can't find it? <a href="#" onclick="return emailSupport()">Email support</a> and we'll resend it.</div>
+<div class="btnrow" id="buyrow"><a id="buylink" class="btn-p" style="text-decoration:none;display:block;text-align:center;padding:14px 16px;font-size:16px;font-weight:700;border-radius:14px" href="#" onclick="return buyPrompt()">Name your price — most people pay $9 →</a></div>
+<div class="tiny" style="margin:8px 0 2px;color:var(--txt);font-weight:600">Pay what you want, $1 minimum. One-time purchase, yours forever.</div>
+<div class="tiny" style="margin:2px 0 6px">Already paid? Enter your code:</div>
+<div style="display:flex;gap:8px;margin:0 0 8px"><input type="text" id="code-in" placeholder="Purchase code" style="flex:1;margin:0" onkeydown="if(event.key==='Enter')unlockCode()"><button class="btn-s" onclick="return unlockCode()" style="flex:none">Unlock</button></div>
+<div class="tiny" style="margin:2px 0 10px">Your code is on the confirmation screen right after checkout (click "Return to merchant" if you closed it). Can't find it? <a href="#" onclick="return emailSupport()">Email support</a> and we'll resend it.</div>
 <div class="tiny" style="margin:8px 0 0">Once you're in, importing your spreadsheet and guided setup are in ⚙ Settings.</div>
 <div id="gs" class="off">
  <label>Starting balance</label><input type="text" id="gs-sb" placeholder="e.g. 4200">
@@ -110,7 +111,7 @@ svg{display:block;width:100%}
 <div class="sect">Plan</div>
 <div class="setrow"><button class="btn-p" onclick="openAdd()">+ Add entry</button><button class="btn-s" onclick="startOver()">Switch plan</button></div>
 <div class="sect">Backups</div>
-<div class="setrow"><button class="btn-s" onclick="saveBackup()">Save backup</button><button class="btn-s" onclick="exportPlan()">Export plan</button><label class="btn-s" style="display:inline-block;cursor:pointer">Import plan<input type="file" id="plan-file" accept=".json,application/json" style="display:none" onchange="importPlanFile(this)"></label></div>
+<div class="setrow"><button class="btn-s" onclick="saveBackup()">Save backup</button><button class="btn-s" onclick="exportPlan()">Export plan</button><button class="btn-s" style="color:var(--txt)" onclick="document.getElementById('plan-file').click()">Import plan</button><input type="file" id="plan-file" accept=".json,application/json" style="display:none;width:0;height:0;position:absolute" onchange="importPlanFile(this)"></div>
 <div class="sect">Data</div>
 <div class="setrow"><button class="btn-s" onclick="pickFile()">Import spreadsheet</button><button class="btn-s" onclick="return openGuidedWarn()">Guided setup</button></div>
 <div class="setrow"><button class="btn-s" onclick="exportRules()">Export rules</button><button class="btn-s" onclick="importRules()">Import rules</button></div>
@@ -223,7 +224,8 @@ function editTxn(date,k,amt){
  document.getElementById('modal').classList.add('on');
  document.getElementById('m-name').focus();
 }
-function closeModal(){document.getElementById('modal').classList.remove('on');CUR=null}
+function closeModal(){['modal','addmodal','setmodal'].forEach(id=>document.getElementById(id).classList.remove('on'));CUR=null}
+function closeSet(){document.getElementById('setmodal').classList.remove('on')}
 function applyEdit(){
  if(!CUR)return;const na=parseFloat(document.getElementById('m-amt').value);
  const nd=document.getElementById('m-date').value;
@@ -778,7 +780,7 @@ function openAdd(){
  document.getElementById('a-freq').value='once';document.getElementById('a-start').value=dstr;
  document.getElementById('a-dayrow').style.display='none';document.getElementById('a-day').value='1';document.getElementById('a-pday').value='1'
 }
-function closeModal(){document.getElementById('modal').classList.remove('on');document.getElementById('addmodal').classList.remove('on')}
+function closeModal(){closeSet();document.getElementById('modal').classList.remove('on');document.getElementById('addmodal').classList.remove('on')}
 function openGuidedWarn(){
  if(D.rows.length>1&&!confirm('Guided setup rebuilds your plan from scratch — everything in the current ledger will be replaced. Continue?'))return false;
  return openGuided()}
