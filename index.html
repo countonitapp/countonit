@@ -427,11 +427,20 @@ function drawCal(){
  for(let dd=1;dd<=dim;dd++){
   const items=ev[dd]||[];
   const isToday=(y===today.getFullYear()&&m===today.getMonth()&&dd===today.getDate());
-  let cls='dcell'+(isToday?' todayc':'');
+  const open=window._calOpen===dd;
+  let cls='dcell'+(isToday?' todayc':'')+(open?' expanded':'')+(items.length?' has':'');
   let inner='';
-  for(const it of items.slice(0,2)){inner+=`<div class="a ${it.c==='income'?'':''}" style="color:${it.c==='income'?'var(--green)':it.c==='debt'?'var(--amber)':'var(--red)'}">${fmtK(it.c==='income'?it.amt:-it.amt)}</div>`}
-  if(items.length>2)inner+=`<div class="a" style="color:var(--mut)">+${items.length-2}</div>`;
-  h+=`<div class="${cls}"><div class="d">${dd}</div>${inner}</div>`;
+  if(open){
+   inner+=`<div class="row" style="margin:2px 0 4px"><span class="tiny"><b>${new Date(y,m,dd).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</b></span><span class="num" style="font-size:13px">${fmt(balOnCal(y,m,dd))}</span></div>`;
+   if(!items.length)inner+=`<div class="tiny" style="opacity:.55">— no activity —</div>`;
+   for(const it of items){const neg=it.c!=='income';
+    inner+=`<div class="row txn" style="padding:2px 0;font-size:12px" onclick="event.stopPropagation();editTxn('${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}','${it.k?it.k.replace(/'/g,"\\'"):''}',${it.c==='income'?it.amt:-it.amt})"><span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${it.k||'item'}${it.c==='debt'?' <span class="tiny" style="color:var(--amber)">debt</span>':''}</span><span class="num ${neg?'':'pos'}" style="margin-left:8px">${neg?'−':'+'}${fmt(Math.abs(it.amt))}</span></div>`}
+   inner+=`<div class="tiny" style="margin-top:4px;opacity:.55">tap to close</div>`;
+  } else {
+   for(const it of items.slice(0,2)){inner+=`<div class="a" style="color:${it.c==='income'?'var(--green)':it.c==='debt'?'var(--amber)':'var(--red)'}">${fmtK(it.c==='income'?it.amt:-it.amt)}</div>`}
+   if(items.length>2)inner+=`<div class="a" style="color:var(--mut)">+${items.length-2}</div>`;
+  }
+  h+=`<div class="${cls}" ${open?'style="grid-column:1/-1;text-align:left;padding:10px 12px;min-height:0"':''} onclick="toggleCalDay(${dd})"><div class="d">${dd}</div>${inner}</div>`;
  }
  h+='</div><div class="tiny" style="margin-top:10px">Green = income · Orange = debt payment · Red = spending</div></div>';
  // month totals
@@ -443,7 +452,9 @@ function drawCal(){
  <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span class="tiny"><b>Net</b></span><span class="num ${inc-dec-debt>=0?'pos':'neg'}">${fmt(inc-dec-debt)}</span></div></div>`;
  document.getElementById('v-cal').innerHTML=h;
 }
-function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}drawCal()}
+function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}window._calOpen=null;drawCal()}
+function toggleCalDay(dd){window._calOpen=(window._calOpen===dd)?null:dd;drawCal()}
+function balOnCal(y,m,dd){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;return balOn(ds)}
 function shiftLedger(n){window._ledgerM+=n;if(window._ledgerM<0){window._ledgerM=11;window._ledgerY--}if(window._ledgerM>11){window._ledgerM=0;window._ledgerY++}renderMonth()}
 function toggleDay(dd){window._openDays=(window._openDays===dd)?null:dd;renderMonth()}
 function toggleMTable(){window._mOpen=!window._mOpen;try{localStorage.setItem('cf_mopen',window._mOpen?'1':'0')}catch(e){}renderMonth()}
