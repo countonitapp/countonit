@@ -482,7 +482,7 @@ function renderMonth(){
   h+=`<div class="row" style="padding:5px 4px 5px 8px;cursor:pointer" onclick="toggleDay('${dd}')">`;
   h+=`<span style="font-size:12px;color:var(--mut);min-width:74px">${wd} ${dn}${isToday?' · now':''}</span>`;
   h+=`<span style="flex:1;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">`;
-  for(const [k,v] of items){const neg=v<0;h+=`<span style="color:${neg?'var(--red)':'var(--green)'};margin-right:7px">${neg?'−':'+'}${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})} ${k.length>14?k.slice(0,13)+'…':k}</span>`}
+  for(const [k,v] of items){const neg=v<0;h+=`<span style="color:${neg?'var(--red)':'var(--green)'};margin-right:7px">${neg?'−':'+'}${fmt(Math.abs(v))}</span>`}
   if(!items.length)h+=`<span style="color:var(--mut);opacity:.5">—</span>`;
   h+=`</span>`;
   h+=`<span class="num ${bal<500?'neg':''}" style="font-size:14px;min-width:92px;text-align:right">${fmt(bal)}</span>`;
