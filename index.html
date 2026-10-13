@@ -446,10 +446,12 @@ function drawCal(){
  // month totals
  let inc=0,dec=0,debt=0;
  for(const dd in ev)for(const it of ev[dd]){if(it.c==='income')inc+=it.amt;else if(it.c==='debt')debt+=it.amt;else dec+=it.amt}
- h+=`<div class="card"><div class="row"><span class="tiny">Income</span><span class="num pos">${fmt(inc)}</span></div>
+ const mbalEnd=balOn(`${y}-${String(m+1).padStart(2,'0')}-${String(dim).padStart(2,'0')}`),mbalStart=balOn(`${y}-${String(m+1).padStart(2,'0')}-01`);
+ h+=`<div class="card"><div class="row"><span class="tiny">Starting balance</span><span class="num">${fmt(mbalStart)}</span></div><div class="row"><span class="tiny">Income</span><span class="num pos">${fmt(inc)}</span></div>
  <div class="row"><span class="tiny">Living expenses</span><span class="num">${fmt(dec)}</span></div>
  <div class="row"><span class="tiny">Debt payments</span><span class="num amb">${fmt(debt)}</span></div>
- <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span class="tiny"><b>Net</b></span><span class="num ${inc-dec-debt>=0?'pos':'neg'}">${fmt(inc-dec-debt)}</span></div></div>`;
+ <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span class="tiny"><b>Net</b></span><span class="num ${inc-dec-debt>=0?'pos':'neg'}">${fmt(inc-dec-debt)}</span></div>
+ <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span class="tiny"><b>Ending balance</b></span><span class="num ${mbalEnd<500?'neg':''}">${fmt(mbalEnd)}</span></div></div>`;
  document.getElementById('v-cal').innerHTML=h;
 }
 function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}window._calOpen=null;drawCal()}
