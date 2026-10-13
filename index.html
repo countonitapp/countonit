@@ -353,7 +353,7 @@ function renderToday(){
  const paid=startDebt-totDebt;
  const pct=Math.max(0,Math.min(100,startDebt?paid/startDebt*100:0));
  let h=`<div class="card"><div class="tiny">BANK BALANCE (PLAN)</div><div class="bal">${fmt(b)}</div>
- <div class="row" style="margin-top:6px"><span class="tiny"><a href="#" onclick="editStartBal();return false" style="text-decoration:underline">vs ${startLbl} (tap to edit)</a></span><span class="num ${b>=start?'pos':'neg'}">${b-start>=0?'+':''}${fmt(b-start)}</span></div>
+ <div class="row" style="margin-top:6px"><span class="tiny"><span style="color:var(--txt)">${b>=start?'Up':'Down'} ${fmt(Math.abs(b-start))} since ${startLbl} <a href="#" onclick="editStartBal();return false" style="color:var(--mut);text-decoration:underline">(edit start)</a></span></span><span class="num ${b>=start?'pos':'neg'}">${b>=start?'+':'−'}${fmt(Math.abs(b-start))}</span></div>
  ${tIrs>0?`<div class="row"><span class="tiny">IRS balance (accruing daily)</span><span class="num neg">${fmt(tIrs)}</span></div>`:''}</div>`;
  // upcoming 14 days
  const up=[];
