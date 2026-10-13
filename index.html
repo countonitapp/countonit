@@ -444,6 +444,7 @@ function drawCal(){
  document.getElementById('v-cal').innerHTML=h;
 }
 function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}drawCal()}
+function shiftLedger(n){window._ledgerM+=n;if(window._ledgerM<0){window._ledgerM=11;window._ledgerY--}if(window._ledgerM>11){window._ledgerM=0;window._ledgerY++}renderMonth()}
 
 // ---------- MONTHLY CASHFLOW ----------
 function catOfRow(k,amt){return catOf(k,amt)}
@@ -453,19 +454,36 @@ function renderMonth(){
   for(const k in t){if(k==='date')continue;const c=catOf(k,t[k]);
    if(c==='income')b.inc+=t[k];else if(c==='debt')b.debt+=t[k];else b.dec+=t[k]}}
  let h='';
- // category breakdown last 3 months
  const months=Object.keys(byM).sort();
- const ymNow=dstr.slice(0,7);
- const recent=months.filter(mk=>mk>=ymNow).slice(0,6);
- const catTot={};
- for(const mk of recent)for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;
-  for(const k in t){if(k==='date')continue;const c=catOf(k,t[k]);if(c==='income')continue;if(k==='Extra Debt Pay')continue;catTot[k]=(catTot[k]||0)+t[k]}}
- h+=`<h2>Spending by category — last 6 plan-months</h2><div class="card">`;
- const mx=Math.max(...Object.values(catTot),1);
- const sorted=Object.entries(catTot).sort((a,b)=>b[1]-a[1]);
- for(const [k,v] of sorted){const c=catOf(k,Math.abs(v)||1);
-  h+=`<div class="row" style="margin:8px 0"><div style="flex:1"><div class="row"><span style="font-size:13px">${k}</span><span class="num" style="font-size:13px">${fmtK(v/6)}</span></div><div class="bar"><i style="width:${v/mx*100}%;background:${c==='debt'?'var(--amber)':'var(--acc)'}"></i></div></div></div>`}
- h+=`<div class="tiny">Averages per month</div></div>`;
+ if(window._ledgerM==null){window._ledgerM=Number(dstr.slice(5,7))-1;window._ledgerY=Number(dstr.slice(0,4))}
+ const LM=window._ledgerM,LY=window._ledgerY;
+ const mk=`${LY}-${String(LM+1).padStart(2,'0')}`;
+ const mName=new Date(LY,LM,1).toLocaleString('en-US',{month:'long',year:'numeric'});
+ const isCur=mk===dstr.slice(0,7);
+ const dim=new Date(LY,LM+1,0).getDate();
+ const todayD=Number(dstr.slice(8,10));
+ h+=`<h2 style="display:flex;align-items:center;gap:10px"><button class="btn" style="padding:2px 10px" onclick="shiftLedger(-1)">‹</button>${mName}<button class="btn" style="padding:2px 10px" ${isCur?'disabled style="opacity:.4"':''} onclick="shiftLedger(1)">›</button><span class="tiny" style="margin-left:auto">Daily ledger — every transaction and the balance it leaves</span></h2><div class="card">`;
+ const byDay={};for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;byDay[t.date]=t}
+ const allD=Object.keys(byDay).sort();
+ const dayBal=dd=>balOn(dd);
+ const startBal=balOn(`${LY}-${String(LM+1).padStart(2,'0')}-01`);
+ h+=`<div class="tiny" style="margin:4px 0 10px">Balance entering the month: <b class="num">${fmt(startBal)}</b></div>`;
+ const maxD=isCur?todayD:dim;
+ for(let dn=1;dn<=maxD;dn++){
+  const dd=`${LY}-${String(LM+1).padStart(2,'0')}-${String(dn).padStart(2,'0')}`;
+  const t=byDay[dd];
+  const wd=new Date(dd+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
+  const isToday=dd===dstr;
+  let items=[];let net=0;
+  if(t){for(const k in t){if(k==='date')continue;items.push([k,t[k]])}net=items.reduce((s,[,v])=>s+v,0)}
+  h+=`<div style="border-left:3px solid ${isToday?'var(--acc)':'transparent'};padding:6px 0 6px 10px;margin:6px 0;background:${isToday?'rgba(255,255,255,.04)':'none'};border-radius:6px">`;
+  h+=`<div class="row" style="margin-bottom:4px"><span style="font-size:12px;color:var(--muted)">${wd} ${mName.split(' ')[0]} ${dn}${isToday?' · today':''}</span><span class="num ${net>=0?'pos':''}" style="font-size:13px">${net?fmt(net):''}</span><span class="num" style="font-size:14px;min-width:110px;text-align:right">${fmt(dayBal(dd))}</span></div>`;
+  if(!t){h+=`<div class="tiny" style="padding:2px 0 2px 14px;opacity:.55">— no activity —</div>`}
+  for(const [k,v] of items){const c=catOf(k,v);const neg=v<0;
+   h+=`<div class="row txn" style="padding:2px 0 2px 14px;font-size:13px;cursor:pointer" onclick="editTxn('${dd}','${k.replace(/'/g,"\\'")}',${v})"><span style="flex:1">${k}${c==='debt'?' <span class="tiny" style="color:var(--amber)">debt</span>':''}</span><span class="num ${neg?'':'pos'}">${neg?'':'+'}${fmt(v)}</span></div>`}
+  h+=`</div>`;
+ }
+ h+=`</div>`;
  // monthly table
  h+=`<h2>Monthly net</h2><div class="card"><table><tr><th>Month</th><th class="r">In</th><th class="r">Out</th><th class="r">Net</th><th class="r">End bal</th></tr>`;
  for(const mk of months.slice(0,36)){
