@@ -445,6 +445,8 @@ function drawCal(){
 }
 function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}drawCal()}
 function shiftLedger(n){window._ledgerM+=n;if(window._ledgerM<0){window._ledgerM=11;window._ledgerY--}if(window._ledgerM>11){window._ledgerM=0;window._ledgerY++}renderMonth()}
+function toggleDay(dd){window._openDays=(window._openDays===dd)?null:dd;renderMonth()}
+function toggleMTable(){window._mOpen=!window._mOpen;try{localStorage.setItem('cf_mopen',window._mOpen?'1':'0')}catch(e){}renderMonth()}
 
 // ---------- MONTHLY CASHFLOW ----------
 function catOfRow(k,amt){return catOf(k,amt)}
@@ -462,35 +464,52 @@ function renderMonth(){
  const isCur=mk===dstr.slice(0,7);
  const dim=new Date(LY,LM+1,0).getDate();
  const todayD=Number(dstr.slice(8,10));
- h+=`<h2 style="display:flex;align-items:center;gap:10px"><button class="btn" style="padding:2px 10px" onclick="shiftLedger(-1)">‹</button>${mName}<button class="btn" style="padding:2px 10px" ${isCur?'disabled style="opacity:.4"':''} onclick="shiftLedger(1)">›</button><span class="tiny" style="margin-left:auto">Daily ledger — every transaction and the balance it leaves</span></h2><div class="card">`;
+ h+=`<h2 style="display:flex;align-items:center;gap:10px"><button class="btn" style="padding:2px 10px" onclick="shiftLedger(-1)">‹</button>${mName}<button class="btn" style="padding:2px 10px" onclick="shiftLedger(1)">›</button><span class="tiny" style="margin-left:auto">Daily ledger — tap a day for detail</span></h2><div class="card">`;
  const byDay={};for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;byDay[t.date]=t}
- const allD=Object.keys(byDay).sort();
  const dayBal=dd=>balOn(dd);
  const startBal=balOn(`${LY}-${String(LM+1).padStart(2,'0')}-01`);
  h+=`<div class="tiny" style="margin:4px 0 10px">Balance entering the month: <b class="num">${fmt(startBal)}</b></div>`;
- const maxD=isCur?todayD:dim;
- for(let dn=1;dn<=maxD;dn++){
+ for(let dn=1;dn<=dim;dn++){
   const dd=`${LY}-${String(LM+1).padStart(2,'0')}-${String(dn).padStart(2,'0')}`;
   const t=byDay[dd];
   const wd=new Date(dd+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
   const isToday=dd===dstr;
   let items=[];let net=0;
   if(t){for(const k in t){if(k==='date')continue;items.push([k,t[k]])}net=items.reduce((s,[,v])=>s+v,0)}
-  h+=`<div style="border-left:3px solid ${isToday?'var(--acc)':'transparent'};padding:6px 0 6px 10px;margin:6px 0;background:${isToday?'rgba(255,255,255,.04)':'none'};border-radius:6px">`;
-  h+=`<div class="row" style="margin-bottom:4px"><span style="font-size:12px;color:var(--muted)">${wd} ${mName.split(' ')[0]} ${dn}${isToday?' · today':''}</span><span class="num ${net>=0?'pos':''}" style="font-size:13px">${net?fmt(net):''}</span><span class="num" style="font-size:14px;min-width:110px;text-align:right">${fmt(dayBal(dd))}</span></div>`;
-  if(!t){h+=`<div class="tiny" style="padding:2px 0 2px 14px;opacity:.55">— no activity —</div>`}
-  for(const [k,v] of items){const c=catOf(k,v);const neg=v<0;
-   h+=`<div class="row txn" style="padding:2px 0 2px 14px;font-size:13px;cursor:pointer" onclick="editTxn('${dd}','${k.replace(/'/g,"\\'")}',${v})"><span style="flex:1">${k}${c==='debt'?' <span class="tiny" style="color:var(--amber)">debt</span>':''}</span><span class="num ${neg?'':'pos'}">${neg?'':'+'}${fmt(v)}</span></div>`}
+  const bal=dayBal(dd);
+  const open=isToday||window._openDays===dd;
+  h+=`<div style="border-left:3px solid ${isToday?'var(--acc)':'transparent'};border-radius:6px;background:${isToday?'rgba(255,255,255,.04)':'none'}">`;
+  h+=`<div class="row" style="padding:5px 4px 5px 8px;cursor:pointer" onclick="toggleDay('${dd}')">`;
+  h+=`<span style="font-size:12px;color:var(--mut);min-width:74px">${wd} ${dn}${isToday?' · now':''}</span>`;
+  h+=`<span style="flex:1;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">`;
+  for(const [k,v] of items){const neg=v<0;h+=`<span style="color:${neg?'var(--red)':'var(--green)'};margin-right:7px">${neg?'−':'+'}${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})} ${k.length>14?k.slice(0,13)+'…':k}</span>`}
+  if(!items.length)h+=`<span style="color:var(--mut);opacity:.5">—</span>`;
+  h+=`</span>`;
+  h+=`<span class="num ${bal<500?'neg':''}" style="font-size:14px;min-width:92px;text-align:right">${fmt(bal)}</span>`;
+  h+=`</div>`;
+  if(open){
+   if(!items.length)h+=`<div class="tiny" style="padding:2px 0 6px 14px;opacity:.55">— no activity —</div>`;
+   for(const [k,v] of items){const c=catOf(k,v);const neg=v<0;
+    h+=`<div class="row txn" style="padding:2px 0 2px 16px;font-size:13px;cursor:pointer" onclick="editTxn('${dd}','${k.replace(/'/g,"\\'")}',${v})"><span style="flex:1">${k}${c==='debt'?' <span class="tiny" style="color:var(--amber)">debt</span>':''}</span><span class="num ${neg?'':'pos'}">${neg?'−':'+'}${fmt(Math.abs(v))}</span></div>`}
+  }
   h+=`</div>`;
  }
  h+=`</div>`;
- // monthly table
- h+=`<h2>Monthly net</h2><div class="card"><table><tr><th>Month</th><th class="r">In</th><th class="r">Out</th><th class="r">Net</th><th class="r">End bal</th></tr>`;
- for(const mk of months.slice(0,36)){
-  const b=byM[mk];const lastD=new Date(Number(mk.slice(0,4)),Number(mk.slice(5,7)),0).getDate();const end=balOn(mk+'-'+String(lastD).padStart(2,'0'));
-  const net=b.inc+b.dec+b.debt;
-  h+=`<tr><td>${mk}</td><td class="r pos">${fmtK(b.inc)}</td><td class="r">${fmtK(-(b.dec+b.debt))}</td><td class="r ${net>=0?'pos':'neg'}">${fmtK(net)}</td><td class="r">${fmtK(end)}</td></tr>`}
- h+='</table></div>';
+ // monthly table — collapsed by default, state persists
+ const mOpen=window._mOpen===undefined?(window._mOpen=localStorage.getItem('cf_mopen')==='1'):window._mOpen;
+ let prev='';
+ for(const m2 of months.slice(months.indexOf(mk)+1,months.indexOf(mk)+4)){
+  const lastD2=new Date(Number(m2.slice(0,4)),Number(m2.slice(5,7)),0).getDate();
+  prev+=(prev?' · ':'')+new Date(Number(m2.slice(0,4)),Number(m2.slice(5,7)-1),1).toLocaleString('en-US',{month:'short'})+' '+fmtK(balOn(m2+'-'+String(lastD2).padStart(2,'0')))}
+ h+=`<h2 style="cursor:pointer" onclick="toggleMTable()">Monthly net ${mOpen?'▾':'▸'}${mOpen?'':`<span class="tiny" style="margin-left:10px;text-transform:none;letter-spacing:0">${prev||'tap for the full table'}</span>`}</h2>`;
+ if(mOpen){
+  h+=`<div class="card"><table><tr><th>Month</th><th class="r">In</th><th class="r">Out</th><th class="r">Net</th><th class="r">End bal</th></tr>`;
+  for(const m2 of months.slice(0,36)){
+   const b=byM[m2];const lastD=new Date(Number(m2.slice(0,4)),Number(m2.slice(5,7)),0).getDate();const end=balOn(m2+'-'+String(lastD).padStart(2,'0'));
+   const net=b.inc+b.dec+b.debt;
+   h+=`<tr ${m2===mk?'style="outline:1px solid var(--acc);border-radius:6px"':''}><td>${m2}</td><td class="r pos">${fmtK(b.inc)}</td><td class="r">${fmtK(-(b.dec+b.debt))}</td><td class="r ${net>=0?'pos':'neg'}">${fmtK(net)}</td><td class="r">${fmtK(end)}</td></tr>`}
+  h+='</table></div>';
+ }
  document.getElementById('v-month').innerHTML=h;
 }
 
