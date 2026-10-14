@@ -152,7 +152,44 @@ svg{display:block;width:100%}
 <button data-v="txns" onclick="go('txns')">Ledger</button>
 </nav>
 <script>
-let D={"meta":{"startBal":2000.0,"start":"2026-11-01"},"rows":[{"date":"2026-11-02","Payroll":1400.0},{"date":"2026-11-03"},{"date":"2026-11-05","Other income":250.0,"Bills":-35.0},{"date":"2026-11-09","Credit Cards":-120.0},{"date":"2026-11-13","Payroll":1400.0,"Debt":-300.0},{"date":"2026-11-16","Bills":-80.0},{"date":"2026-11-20","Other income":95.0,"Bills":-45.0},{"date":"2026-11-24","Bills":-120.0},{"date":"2026-11-27","Payroll":1400.0,"Debt":-300.0},{"date":"2026-11-30","Bills":-62.0},{"date":"2026-12-02","Bills":-62.0},{"date":"2026-12-04","Other income":250.0,"Bills":-35.0}]};
+// Sample plan — built relative to today so every month shows real activity
+let SAMP_RULES=[];
+let D=(function(){
+ const t=new Date();const Y=t.getFullYear(),M=t.getMonth();
+ const dim=y=>new Date(y,0,0).getDate?0:0;
+ const pad=n=>String(n).padStart(2,'0');
+ const ds=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(Math.min(d,new Date(y,m+1,0).getDate()));
+ const rows=[];const byD={};
+ const add=(y,m,d,items)=>{const k=ds(y,m,d);if(!byD[k]){byD[k]={date:k};rows.push(byD[k])}for(const n in items)byD[k][n]=(byD[k][n]||0)+items[n]};
+ SAMP_RULES=[
+  {k:'Payroll',amt:1900,label:'Payroll',rec:true,day:15},
+  {k:'Rent',amt:1200,label:'Rent',rec:true,day:1},
+  {k:'Utilities',amt:145,label:'Utilities',rec:true,day:8},
+  {k:'Phone',amt:85,label:'Phone',rec:true,day:12},
+  {k:'Subscriptions',amt:32,label:'Subscriptions',rec:true,day:5},
+  {k:'Visa Card',amt:180,label:'Visa Card',rec:true,day:18},
+  {k:'Loan payment',amt:150,label:'Loan payment',rec:true,day:20}
+ ];
+ for(let off=-3;off<=2;off++){
+  const y=Y+Math.floor((M+off)/12),m=(M+off+12)%12;
+  add(y,m,15,{'Payroll':1900});
+  add(y,m,new Date(y,m+1,0).getDate(),{'Payroll':1900});
+  add(y,m,1,{'Rent':-1200});
+  add(y,m,5,{'Subscriptions':-32});
+  add(y,m,8,{'Utilities':-138.42});
+  add(y,m,12,{'Phone':-85});
+  add(y,m,18,{'Visa Card':-180});
+  add(y,m,20,{'Loan payment':-150});
+  if(off%2===0)add(y,m,3,{'Other income':250});
+  if(off%2===1)add(y,m,22,{'Other income':95});
+  add(y,m,25,{'Bills':-52.30});
+ }
+ rows.sort((a,b)=>a.date.localeCompare(b.date));
+ return {meta:{startBal:2400,start:ds(Y,M-3,1),debts:[
+   {name:'Visa Card',bal:1400,apr:22.9,pay:180,day:18,start:ds(Y,M-3,18)},
+   {name:'Personal Loan',bal:3200,apr:9.5,pay:150,day:20,start:ds(Y,M-3,20)}
+  ]},rows,sample:true};
+})();
 function taxOn(ds){if(!D.taxbill)return 0;const s=D.taxbill.series;let a=s[0],b=s[0];
  for(let i=0;i<s.length;i++){if(s[i][0]<=ds)a=s[i];if(b[0]===s[0][0]&&s[i][0]>ds)b=s[i];}
  if(s[s.length-1][0]<=ds)return 0;
@@ -789,26 +826,27 @@ function openGuidedWarn(){
 // ---------- ONBOARDING / PLANS ----------
 // ---------- BUY / TRIAL (edit BUY_URL after creating the Stripe payment link) ----------
 const BUY_URL='https://buy.stripe.com/4gM28rdsd9rj6ml4vn9IQ00'; // Stripe PWYW payment link
-const UKEY='cfunlock_v1', CODE='COUNTONIT'; // purchase code — matches the code in the Stripe post-purchase message
+const UKEY='cfunlock_v1'; // unlock token is obfuscated — see K() at boot
 function buyPrompt(){
  if(!BUY_URL){alert('Checkout coming soon — the app is free to use for now.');return false}
  location.href=BUY_URL;return false}
+const _K=atob('GRUPFA4VFBMO').split('').map(c=>String.fromCharCode(c.charCodeAt(0)^0x5a)).join('');
 function unlockCode(){
  const v=(document.getElementById('code-in').value||'').trim().toUpperCase();
  if(!v)return false;
- if(v===CODE){finishUnlock();return false}
+ if(v===_K){finishUnlock();return false}
  alert("That code doesn't match. Your code arrives in the confirmation right after checkout on Stripe.");return false}
 function finishUnlock(){store.setItem(UKEY,'paid');markUnlocked();blankIfEmpty();closeOb();autoBackup();return false}
-function blankIfEmpty(){if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:dstr}]}));location.reload();return true}return false}
+function blankIfEmpty(){if(!store.getItem(KEY)){const samp={meta:D.meta,rows:D.rows,rules:SAMP_RULES,cats:{'Loan payment':'Debt payment'}};store.setItem(KEY,JSON.stringify(samp));if(Array.isArray(SAMP_RULES))RULES=SAMP_RULES.slice();saveStore();location.reload();return true}return false}
 function isUnlocked(){return store.getItem(UKEY)==='paid'}
 function emailSupport(){location.href='mailto:jeff@realanddigitaldeals.com?subject=Lost%20my%20Count%20On%20It%20code&body=Hi%20Jeff%2C%20I%20paid%20for%20Count%20On%20It%20but%20lost%20my%20unlock%20code.%20My%20name%20is%20';return false}
 // Auto-unlock: Stripe redirects back to ?unlock=CODE after checkout (incl. Apple Pay)
-(function(){try{const q=new URLSearchParams(location.search).get('unlock');if(q&&q.toUpperCase()===CODE){store.setItem(UKEY,'paid');if(location.search)history.replaceState(null,'',location.pathname);if(!store.getItem(KEY))store.setItem(KEY,JSON.stringify({meta:{startBal:0},rows:[{date:dstr}]}));location.reload();}}catch(e){}})();
+(function(){try{const q=new URLSearchParams(location.search).get('unlock');if(q&&q.toUpperCase()===_K){store.setItem(UKEY,'paid');if(location.search)history.replaceState(null,'',location.pathname);if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,rules:SAMP_RULES,cats:{'Loan payment':'Debt payment'}}));if(Array.isArray(SAMP_RULES))RULES=SAMP_RULES.slice();saveStore()};location.reload();}}catch(e){}})();
 function closeOb(){document.getElementById('onboard').classList.remove('on')}
 function markUnlocked(){document.body.classList.add('unlocked')}
 function showOb(){document.getElementById('onboard').classList.add('on');if(isUnlocked())document.getElementById('buyrow').classList.add('off');renderSetup()}
 function openGuided(){if(!isUnlocked()){showOb();return false}showOb();document.getElementById('buyrow').classList.add('off');document.getElementById('paidblk').classList.add('off');document.getElementById('gs').classList.remove('off');document.getElementById('gs-sb').focus();return false}
-function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal[0][1]},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));closeOb()}
+function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));if(Array.isArray(SAMP_RULES)){RULES=SAMP_RULES.slice();saveStore()}closeOb()}
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
 function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.rows))throw new Error('bad file');savePlan(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;if(p.cats)for(const k in p.cats)CATX[k]=p.cats[k];saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message)}};r.readAsText(f)}
