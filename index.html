@@ -836,17 +836,18 @@ function unlockCode(){
  if(!v)return false;
  if(v===_K){finishUnlock();return false}
  alert("That code doesn't match. Your code arrives in the confirmation right after checkout on Stripe.");return false}
-function finishUnlock(){store.setItem(UKEY,'paid');markUnlocked();blankIfEmpty();closeOb();autoBackup();return false}
+function finishUnlock(){store.setItem(UKEY,'paid');markUnlocked();blankIfEmpty();try{sessionStorage.setItem('coi_setup','1')}catch(e){}autoBackup();showOb();return false}
 function blankIfEmpty(){if(!store.getItem(KEY)){const samp={meta:D.meta,rows:D.rows,rules:SAMP_RULES,cats:{'Loan payment':'Debt payment'}};store.setItem(KEY,JSON.stringify(samp));if(Array.isArray(SAMP_RULES))RULES=SAMP_RULES.slice();saveStore();location.reload();return true}return false}
 function isUnlocked(){return store.getItem(UKEY)==='paid'}
 function emailSupport(){location.href='mailto:jeff@realanddigitaldeals.com?subject=Lost%20my%20Count%20On%20It%20code&body=Hi%20Jeff%2C%20I%20paid%20for%20Count%20On%20It%20but%20lost%20my%20unlock%20code.%20My%20name%20is%20';return false}
 // Auto-unlock: Stripe redirects back to ?unlock=CODE after checkout (incl. Apple Pay)
-(function(){try{const q=new URLSearchParams(location.search).get('unlock');if(q&&q.toUpperCase()===_K){store.setItem(UKEY,'paid');if(location.search)history.replaceState(null,'',location.pathname);if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,rules:SAMP_RULES,cats:{'Loan payment':'Debt payment'}}));if(Array.isArray(SAMP_RULES))RULES=SAMP_RULES.slice();saveStore()};location.reload();}}catch(e){}})();
+(function(){try{const q=new URLSearchParams(location.search).get('unlock');if(q&&q.toUpperCase()===_K){store.setItem(UKEY,'paid');if(location.search)history.replaceState(null,'',location.pathname);if(!store.getItem(KEY)){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,rules:SAMP_RULES,cats:{'Loan payment':'Debt payment'}}));if(Array.isArray(SAMP_RULES))RULES=SAMP_RULES.slice();saveStore()};try{sessionStorage.setItem('coi_setup','1')}catch(e){};location.reload();}}catch(e){}})();
+(function(){try{if(sessionStorage.getItem('coi_setup')){sessionStorage.removeItem('coi_setup');setTimeout(showOb,50)}}catch(e){}})();
 function closeOb(){document.getElementById('onboard').classList.remove('on')}
 function markUnlocked(){document.body.classList.add('unlocked')}
 function showOb(){document.getElementById('onboard').classList.add('on');if(isUnlocked())document.getElementById('buyrow').classList.add('off');renderSetup()}
 function openGuided(){if(!isUnlocked()){showOb();return false}showOb();document.getElementById('buyrow').classList.add('off');document.getElementById('paidblk').classList.add('off');document.getElementById('gs').classList.remove('off');document.getElementById('gs-sb').focus();return false}
-function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));if(Array.isArray(SAMP_RULES)){RULES=SAMP_RULES.slice();saveStore()}closeOb()}
+function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));if(Array.isArray(SAMP_RULES)){RULES=SAMP_RULES.slice();saveStore()}try{sessionStorage.setItem('coi_setup','1')}catch(e){}location.reload()}
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
 function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.rows))throw new Error('bad file');savePlan(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;if(p.cats)for(const k in p.cats)CATX[k]=p.cats[k];saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message)}};r.readAsText(f)}
