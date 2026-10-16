@@ -819,7 +819,7 @@ function openAdd(){
  document.getElementById('addmodal').classList.add('on');
  document.getElementById('a-name').value='';document.getElementById('a-amt').value='';
  document.getElementById('a-bal').value='';document.getElementById('a-apr').value='0';document.getElementById('a-pay').value='';
- document.getElementById('a-loanfields').style.display='none';document.getElementById('a-cat').value='Other debits';
+ document.getElementById('a-loanfields').style.display='none';document.getElementById('a-cat').value='Bills';
  document.getElementById('a-freq').value='once';document.getElementById('a-start').value=dstr;
  document.getElementById('a-dayrow').style.display='none';document.getElementById('a-day').value='1';document.getElementById('a-pday').value='1'
 }
@@ -856,7 +856,7 @@ function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
 function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.rows))throw new Error('bad file');savePlan(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;if(p.cats)for(const k in p.cats)CATX[k]=p.cats[k];saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message)}};r.readAsText(f)}
-function savePlan(p){if(!p||!Array.isArray(p.rows))throw new Error('no rows in file');const old=JSON.parse(store.getItem(KEY)||'{}');const m=Object.assign({},old.meta,p.meta||{});m.debts=(p.meta&&p.meta.debts)||old.meta.debts||[];m.loans=(p.meta&&p.meta.loans)||old.meta.loans;m.startBal=(p.meta&&p.meta.startBal!=null)?p.meta.startBal:old.meta.startBal;store.setItem(KEY,JSON.stringify({meta:m,rows:p.rows}))}
+function savePlan(p){if(!p||!Array.isArray(p.rows))throw new Error('no rows in file');const old=(()=>{try{return JSON.parse(store.getItem(KEY)||'{}')}catch(e){return{}}})();const om=old.meta||{};const m=Object.assign({},om,p.meta||{});m.debts=(p.meta&&p.meta.debts)||om.debts||[];m.loans=(p.meta&&p.meta.loans)||om.loans||[];m.startBal=(p.meta&&p.meta.startBal!=null)?p.meta.startBal:om.startBal;store.setItem(KEY,JSON.stringify({meta:m,rows:p.rows}))}
 function backupData(){return JSON.stringify({meta:D.meta,rows:D.rows,rules:RULES,overrides:OVR,cats:CATX,v:2},null,1)}
 function downloadJSON(s,name){const b=new Blob([s],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 function saveBackup(){downloadJSON(backupData(),'Count On It Backup '+new Date().toISOString().slice(0,10)+'.json')}
