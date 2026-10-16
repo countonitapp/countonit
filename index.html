@@ -967,14 +967,16 @@ function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
 function openIRS(){if(!isUnlocked()){showOb();return false}
- const m=D.meta||{};const real=m.irsReal?m:{};
- document.getElementById('irs-pay').value=real.irsPayAmt||'';
- document.getElementById('irs-day').value=real.irsPayDay||15;
- document.getElementById('irs-apr').value=(real.irsAccounts&&real.irsAccounts.length)?(D.irs&&D.irs.apr)||7:7;
- document.getElementById('irs-pen').value=(real.irsAccounts&&real.irsAccounts.length)?(D.irs&&D.irs.penRate)||0.5:0.5;
- document.getElementById('irs-start').value=real.irsStart||dstr;
+ // Prefill from the live engine first, then fall back to meta flags.
+ const E=(D.irs&&D.irs.accounts&&D.irs.accounts.length)?D.irs:null;
+ const m=D.meta||{};const useM=!E&&(m.irsReal&&m.irsAccounts&&m.irsAccounts.length);
+ document.getElementById('irs-pay').value=E?E.payAmt:(useM?m.irsPayAmt:'');
+ document.getElementById('irs-day').value=E?E.payDay:(useM?m.irsPayDay:15);
+ document.getElementById('irs-apr').value=E?E.apr:(useM?m.irsApr:7);
+ document.getElementById('irs-pen').value=E?E.penRate:(useM?m.irsPen:0.5);
+ document.getElementById('irs-start').value=E?E.start:(useM?m.irsStart:dstr);
  const c=document.getElementById('irs-years');c.innerHTML='';
- const accs=real.irsAccounts&&real.irsAccounts.length?real.irsAccounts:[{year:new Date().getFullYear()-3,tax0:'',pen:'',int:''}];
+ const accs=E?E.accounts:(useM?m.irsAccounts:[{year:new Date().getFullYear()-3,tax0:'',pen:'',int:''}]);
  for(const a of accs)addIRSYear(a.year,a.tax0,a.pen,a.int);
  document.getElementById('irsmodal').classList.add('on');return false}
 function closeIRS(){document.getElementById('irsmodal').classList.remove('on')}
