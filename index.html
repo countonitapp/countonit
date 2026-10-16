@@ -682,16 +682,19 @@ function deForm(){
 // Interest: APR% yearly, accrued daily on remaining tax + penalty.
 // FTP penalty: penRate% of remaining TAX per month, capped at 25% of the tax.
 function irsInit(){
+ // self-sufficient: computes today's date locally, because this can run before
+ // the module-level `dstr` const is initialized (boot calls irsInit early).
+ const dstr0=new Date().toISOString().slice(0,10);
  if(D.irs)return;
  if(D.sample){
-  D.irs={payDay:15,payAmt:1245,apr:7,penRate:0.5,start:dstr,accounts:[
+  D.irs={payDay:15,payAmt:1245,apr:7,penRate:0.5,start:dstr0,accounts:[
    {year:2021,tax0:14200,tax:14200,pen:660,int:1740},
    {year:2022,tax0:11150,tax:11150,pen:440,int:800},
    {year:2023,tax0:6400,tax:6400,pen:267,int:620}]};
  }else{
   // Demo defaults for new users. Real numbers come from importing a plan JSON
   // (Settings → Import plan) or entering your own in guided setup.
-  D.irs={payDay:15,payAmt:1745,apr:7,penRate:0.5,start:dstr,accounts:[
+  D.irs={payDay:15,payAmt:1745,apr:7,penRate:0.5,start:dstr0,accounts:[
    {year:2021,tax0:25000,tax:25000,pen:1150,int:3100},
    {year:2022,tax0:20000,tax:20000,pen:780,int:1450},
    {year:2023,tax0:11500,tax:11500,pen:480,int:1120}]};
@@ -699,7 +702,7 @@ function irsInit(){
    D.irs.accounts=D.meta.irsAccounts.map(a=>({year:a.year,tax0:a.tax0,tax:a.tax0,pen:a.pen,int:a.int}));
    D.irs.payAmt=D.meta.irsPayAmt||D.irs.payAmt;
    D.irs.payDay=D.meta.irsPayDay||D.irs.payDay;
-   D.irs.start=D.meta.irsStart||dstr;
+   D.irs.start=D.meta.irsStart||dstr0;
   }
  }
  persistAll()
@@ -949,7 +952,7 @@ function openGuided(){if(!isUnlocked()){showOb();return false}showOb();document.
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));if(Array.isArray(SAMP_RULES)){RULES=SAMP_RULES.slice();saveStore()}try{sessionStorage.setItem('coi_setup','1')}catch(e){}location.reload()}
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
-function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.rows))throw new Error('bad file');savePlan(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;if(p.cats)for(const k in p.cats)CATX[k]=p.cats[k];saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message)}};r.readAsText(f)}
+function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const txt=String(r.result).replace(/^\uFEFF/,'').trim();const p=JSON.parse(txt);if(!p||!Array.isArray(p.rows))throw new Error('no ledger rows in file');savePlan(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;if(p.cats)for(const k in p.cats)CATX[k]=p.cats[k];saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message+' — pick a plan or backup .json file, or re-save your backup.')}};r.readAsText(f)}
 function savePlan(p){if(!p||!Array.isArray(p.rows))throw new Error('no rows in file');const old=(()=>{try{return JSON.parse(store.getItem(KEY)||'{}')}catch(e){return{}}})();const om=old.meta||{};const m=Object.assign({},om,p.meta||{});m.debts=(p.meta&&p.meta.debts)||om.debts||[];m.loans=(p.meta&&p.meta.loans)||om.loans||[];m.startBal=(p.meta&&p.meta.startBal!=null)?p.meta.startBal:om.startBal;store.setItem(KEY,JSON.stringify({meta:m,rows:p.rows}))}
 function backupData(){return JSON.stringify({meta:D.meta,rows:D.rows,rules:RULES,overrides:OVR,cats:CATX,v:2},null,1)}
 function downloadJSON(s,name){const b=new Blob([s],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
