@@ -111,6 +111,18 @@ svg{display:block;width:100%}
 </div>
 </div></div>
 <input type="file" id="imp-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFile(event)">
+<div class="modal" id="irsmodal" onclick="if(event.target===this)closeIRS()"><div class="sheet">
+<div class="row"><h2 style="margin:0">IRS installment plan</h2><button class="btn-s" style="padding:6px 10px" onclick="closeIRS()">✕</button></div>
+<div class="tiny" style="margin:6px 0">One block per tax year, from your irs.gov "Income tax (you owe)" card. Enter amounts <b>as of the snapshot date</b> — the engine starts accruing the day after. Payments apply interest → penalty → tax, oldest year first.</div>
+<div class="row" style="gap:8px"><div style="flex:1"><label>Monthly payment</label><input type="text" inputmode="decimal" id="irs-pay" placeholder="e.g. 1745"></div><div style="flex:1"><label>Payment day (1–31)</label><input type="text" inputmode="numeric" id="irs-day" placeholder="15"></div></div>
+<div class="row" style="gap:8px"><div style="flex:1"><label>Interest rate % (IRS sets quarterly)</label><input type="text" inputmode="decimal" id="irs-apr" placeholder="7"></div><div style="flex:1"><label>Snapshot date</label><input type="date" id="irs-start"></div></div>
+<label>Failure-to-pay penalty %/month</label><input type="text" inputmode="decimal" id="irs-pen" value="0.5">
+<div class="tiny" style="margin:10px 0 4px;font-weight:600">Tax year balances (as of snapshot date)</div>
+<div id="irs-years"></div>
+<div class="btnrow"><button class="btn-s" onclick="addIRSYear()">+ Add tax year</button><button class="btn-d" onclick="removeIRSYear()">− Remove last</button></div>
+<div class="btnrow"><button class="btn-p" onclick="saveIRS()">Save IRS plan</button><button class="btn-d" onclick="clearIRS()">Remove IRS engine</button></div>
+<div class="tiny" style="margin-top:8px">Tip: if a payment just left your bank but hasn't posted to irs.gov yet, don't add it — reduce the buckets by hand so it isn't counted twice. Log one-off extra payments as an "IRS extra pay" ledger entry; the engine picks those up automatically.</div>
+</div></div>
 <div class="modal" id="setmodal" onclick="if(event.target===this)closeModal()"><div class="sheet">
 <div class="row"><h2 style="margin:0">Settings & tools</h2><button class="btn-s" style="padding:6px 10px" onclick="closeModal()">✕</button></div>
 <div class="sect">Plan</div>
@@ -119,7 +131,7 @@ svg{display:block;width:100%}
 <div class="setrow"><button class="btn-s" onclick="saveBackup()">Save backup</button><button class="btn-s" onclick="exportPlan()">Export plan</button><button class="btn-s" style="color:var(--txt)" onclick="document.getElementById('plan-file').click()">Import plan</button><input type="file" id="plan-file" accept=".json,application/json" style="display:none;width:0;height:0;position:absolute" onchange="importPlanFile(this)"></div>
 <div class="sect">Data</div>
 <div class="setrow"><button class="btn-s" onclick="pickFile()">Import spreadsheet</button><button class="btn-s" onclick="return openGuidedWarn()">Guided setup</button></div>
-<div class="setrow"><button class="btn-s" onclick="exportRules()">Export rules</button><button class="btn-s" onclick="importRules()">Import rules</button></div>
+<div class="setrow"><button class="btn-s" onclick="openIRS()">IRS installment plan</button><button class="btn-s" onclick="exportRules()">Export rules</button><button class="btn-s" onclick="importRules()">Import rules</button></div>
 </div></div>
 <div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="sheet">
 <div class="row"><h2 style="margin:0">Edit transaction</h2><button class="btn-s" style="padding:6px 10px" onclick="closeModal()">✕</button></div>
@@ -659,7 +671,7 @@ function saveDebt(){
  if(myDebts()[DE_EDIT.i]){myDebts()[DE_EDIT.i]=Object.assign(myDebts()[DE_EDIT.i],d)}
  else{myDebts().push(d)}
  DE_EDIT=null;persistDebts();renderDebts();renderToday()}
-function delDebt(i){if(!confirm('Remove '+myDebts()[i].name+' from tracking?'))return;myDebts().splice(i,1);DE_EDIT=null;persistDebts();renderDebts();renderToday()}
+function delDebt(i){const d=myDebts()[i];if(!confirm('Remove '+d.name+' from tracking?\n\nPast payments stay in the ledger (history is kept).'))return;let msg='';const lk=debtLedgerKey(d.name);if(lk){const ups=upcomingPays(lk);if(ups.length){msg='\n\nAlso remove the '+ups.length+' upcoming '+d.name+' payment'+(ups.length>1?'s':'')+' from the ledger ('+fmt(ups.reduce((a,t)=>a-t[lk],0))+' total)?\n\nOK = remove them · Cancel = keep paying it in the plan';if(confirm(msg)){for(const t of ups)delete t[lk];saveStore()}}}if(D.meta.loans&&D.meta.loans[d.name]!==undefined)delete D.meta.loans[d.name];if(D.irs&&D.irs.enabled&&/^IRS/i.test(d.name)&&!confirm('This looks like the IRS installment engine — removing it as a debt does not turn off IRS tracking (⚙ Settings → IRS installment plan). Continue?'))return;myDebts().splice(i,1);DE_EDIT=null;persistAll();D.bal=computeBal(D);refreshBal();renderDebts();renderToday();renderMonth();renderCal();renderTxns();toast(d.name+' removed from tracking')}
 function closeDebt(i){const d=myDebts()[i];if(!confirm('Mark '+d.name+' paid off and closed as of today?'))return;
  const lk=debtLedgerKey(d.name);const ups=lk?upcomingPays(lk):[];
  if(ups.length&&confirm('Also remove the '+ups.length+' upcoming '+d.name+' payment'+(ups.length>1?'s':'')+' from the ledger?')){for(const t of ups)delete t[lk];saveStore()}
@@ -703,6 +715,8 @@ function irsInit(){
    D.irs.payAmt=D.meta.irsPayAmt||D.irs.payAmt;
    D.irs.payDay=D.meta.irsPayDay||D.irs.payDay;
    D.irs.start=D.meta.irsStart||dstr0;
+   if(D.meta.irsApr>0)D.irs.apr=D.meta.irsApr;
+   if(D.meta.irsPen!=null)D.irs.penRate=D.meta.irsPen;
   }
  }
  persistAll()
@@ -809,7 +823,7 @@ function renderDebts(){
   <div class="bar"><i style="width:${done}%;background:#3ecf8e"></i></div>
   <div class="row" style="margin-top:8px"><span class="tiny">Projected payoff</span><span class="num">${u.slow?'⚠ At '+fmt(d.pay)+'/mo vs '+fmt(u.moInt)+'/mo interest, payoff takes 100+ years — raise the payment':u.payoff||(u.moInt>d.pay?'⚠ Payment ('+fmt(d.pay)+'/mo) is less than monthly interest ('+fmt(u.moInt)+'/mo) — balance will grow':'—')}</span></div>
   <div class="row"><span class="tiny">Interest paid so far</span><span class="num amb">${fmt(u.interest)}</span></div>
-  <div class="btnrow"><button class="btn-s" onclick="editDebt(${i})">Edit</button><button class="btn-d" onclick="closeDebt(${i})">✓ Mark paid off</button></div></div>`}}
+  <div class="btnrow"><button class="btn-s" onclick="editDebt(${i})">Edit</button><button class="btn-s" onclick="closeDebt(${i})">✓ Mark paid off</button><button class="btn-d" onclick="delDebt(${i})">Remove</button></div></div>`}}
  h+=`<div class="seg"><button class="btn-s" onclick="editDebt(-1)">+ Add / track a debt</button></div>`;
  if(DE_EDIT!==null)h+=deForm();
  if(D.taxbill&&D.taxbill.series[0][1]>0)h+=`<div class="tiny" style="margin-top:8px">IRS tracking comes from the built-in Tax Bill amortization — edit its payment amounts in the ledger.</div>`;
@@ -952,6 +966,58 @@ function openGuided(){if(!isUnlocked()){showOb();return false}showOb();document.
 function useBuiltin(){store.setItem(KEY,JSON.stringify({meta:D.meta,rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal}));if(Array.isArray(SAMP_RULES)){RULES=SAMP_RULES.slice();saveStore()}try{sessionStorage.setItem('coi_setup','1')}catch(e){}location.reload()}
 function startOver(){if(!confirm('Switch to a different plan? Your labels stay on this device.'))return;store.removeItem(KEY);showOb()}
 function exportPlan(){const s=JSON.stringify({meta:D.meta,rows:D.rows},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Plan JSON copied to clipboard'),()=>{})}
+function openIRS(){if(!isUnlocked()){showOb();return false}
+ const m=D.meta||{};const real=m.irsReal?m:{};
+ document.getElementById('irs-pay').value=real.irsPayAmt||'';
+ document.getElementById('irs-day').value=real.irsPayDay||15;
+ document.getElementById('irs-apr').value=(real.irsAccounts&&real.irsAccounts.length)?(D.irs&&D.irs.apr)||7:7;
+ document.getElementById('irs-pen').value=(real.irsAccounts&&real.irsAccounts.length)?(D.irs&&D.irs.penRate)||0.5:0.5;
+ document.getElementById('irs-start').value=real.irsStart||dstr;
+ const c=document.getElementById('irs-years');c.innerHTML='';
+ const accs=real.irsAccounts&&real.irsAccounts.length?real.irsAccounts:[{year:new Date().getFullYear()-3,tax0:'',pen:'',int:''}];
+ for(const a of accs)addIRSYear(a.year,a.tax0,a.pen,a.int);
+ document.getElementById('irsmodal').classList.add('on');return false}
+function closeIRS(){document.getElementById('irsmodal').classList.remove('on')}
+function addIRSYear(y,tax,pen,intv){
+ const c=document.getElementById('irs-years');
+ const d=document.createElement('div');d.className='card';d.style.marginBottom='8px';
+ const yr=(y!=null?y:new Date().getFullYear()-c.children.length);
+ d.innerHTML='<div class="row" style="gap:8px"><div style="flex:1"><label>Tax year</label><input type="text" inputmode="numeric" class="iy-year" value="'+yr+'"></div><div style="flex:2"><label>Assessed total (tax)</label><input type="text" inputmode="decimal" class="iy-tax" value="'+(tax!=null?tax:'')+'" placeholder="25732.85"></div></div>'+
+  '<div class="row" style="gap:8px;margin-top:6px"><div style="flex:1"><label>FTP penalty</label><input type="text" inputmode="decimal" class="iy-pen" value="'+(pen!=null?pen:'')+'" placeholder="1196.47"></div><div style="flex:1"><label>Accrued interest</label><input type="text" inputmode="decimal" class="iy-int" value="'+(intv!=null?intv:'')+'" placeholder="3192.28"></div></div>';
+ c.appendChild(d)}
+function removeIRSYear(){const c=document.getElementById('irs-years');if(c.children.length>1)c.removeChild(c.lastChild)}
+function saveIRS(){
+ const pay=parseFloat(document.getElementById('irs-pay').value);const day=parseInt(document.getElementById('irs-day').value,10);
+ const apr=parseFloat(document.getElementById('irs-apr').value);const pen=parseFloat(document.getElementById('irs-pen').value);
+ const start=document.getElementById('irs-start').value;
+ if(!(pay>0))return alert('Enter your monthly IRS payment');if(!(day>=1&&day<=31))return alert('Payment day must be 1–31');
+ if(!(apr>=0))return alert('Enter the interest rate (7 for Q4 2026)');if(!(pen>=0))return alert('Enter the penalty rate (usually 0.5)');
+ if(!start)return alert('Pick the snapshot date (the day you copied the numbers)');
+ const accounts=[];
+ for(const d of document.getElementById('irs-years').children){
+  const g=c=>parseFloat(d.querySelector('.'+c).value);
+  const year=parseInt(d.querySelector('.iy-year').value,10);const tax0=g('iy-tax'),p=g('iy-pen'),iv=g('iy-int');
+  if(!year||!(tax0>0))return alert('Every tax year needs a year and an assessed total');
+  accounts.push({year,tax0,pen:isNaN(p)?0:p,int:isNaN(iv)?0:iv})}
+ accounts.sort((a,b)=>a.year-b.year);
+ let plan;try{plan=JSON.parse(store.getItem(KEY)||'{}')}catch(e){plan={}}
+ plan.meta=plan.meta||{};
+ plan.meta.irsReal=true;plan.meta.irsPayAmt=pay;plan.meta.irsPayDay=day;plan.meta.irsStart=start;plan.meta.irsAccounts=accounts;
+ plan.meta.irsApr=apr;plan.meta.irsPen=pen;
+ // The persisted plan carries the engine block — update it directly so the
+ // next boot sees these numbers even though D.irs already exists.
+ plan.irs=plan.irs||{};
+ plan.irs.payAmt=pay;plan.irs.payDay=day;plan.irs.start=start;plan.irs.apr=apr;plan.irs.penRate=pen;
+ plan.irs.accounts=accounts.map(a=>({year:a.year,tax0:a.tax0,tax:a.tax0,pen:a.pen,int:a.int}));
+ if(!Array.isArray(plan.meta.debts))plan.meta.debts=[];
+ if(!plan.meta.debts.some(x=>x.name==='IRS'))plan.meta.debts.push({name:'IRS',bal:0,apr:7,pay:pay,day:day,start:start});
+ if(!plan.meta.loans)plan.meta.loans={};plan.meta.loans.IRS=7;
+ store.setItem(KEY,JSON.stringify(plan));saveStore();location.reload();return false}
+function clearIRS(){if(!confirm('Remove the IRS engine from this plan? The generic IRS debt entry stays.'))return;
+ let plan;try{plan=JSON.parse(store.getItem(KEY)||'{}')}catch(e){plan={}}
+ const m=plan.meta||{};delete m.irsReal;delete m.irsPayAmt;delete m.irsPayDay;delete m.irsStart;delete m.irsAccounts;delete m.irsApr;delete m.irsPen;
+ if(plan.irs){delete plan.irs.accounts;delete plan.irs.payAmt}
+ store.setItem(KEY,JSON.stringify(plan));saveStore();location.reload();return false}
 function importPlanFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const txt=String(r.result).replace(/^\uFEFF/,'').trim();const p=JSON.parse(txt);if(!p||!Array.isArray(p.rows))throw new Error('no ledger rows in file');savePlan(p);if(Array.isArray(p.rules))RULES=p.rules;if(p.overrides)OVR=p.overrides;if(p.cats)for(const k in p.cats)CATX[k]=p.cats[k];saveStore();location.reload()}catch(e){alert('Not a valid plan file: '+e.message+' — pick a plan or backup .json file, or re-save your backup.')}};r.readAsText(f)}
 function savePlan(p){if(!p||!Array.isArray(p.rows))throw new Error('no rows in file');const old=(()=>{try{return JSON.parse(store.getItem(KEY)||'{}')}catch(e){return{}}})();const om=old.meta||{};const m=Object.assign({},om,p.meta||{});m.debts=(p.meta&&p.meta.debts)||om.debts||[];m.loans=(p.meta&&p.meta.loans)||om.loans||[];m.startBal=(p.meta&&p.meta.startBal!=null)?p.meta.startBal:om.startBal;store.setItem(KEY,JSON.stringify({meta:m,rows:p.rows}))}
 function backupData(){return JSON.stringify({meta:D.meta,rows:D.rows,rules:RULES,overrides:OVR,cats:CATX,v:2},null,1)}
