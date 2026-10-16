@@ -791,11 +791,11 @@ function renderDebts(){
   h+=`<div class="card" style="border-left:4px solid #ff6b6b"><div class="row"><h2 style="margin:0">IRS installment</h2><span class="chip">${cfg.apr}% + ${cfg.penRate}%/mo FTP penalty</span></div>
   <div class="bal" style="font-size:30px;margin:6px 0">${fmt(cur)}</div>
   <div class="bar"><i style="width:${done}%;background:#ff6b6b"></i></div>
-  <table style="margin-top:8px"><tr><th>Year</th><th class="r">Tax</th><th class="r">Penalty</th><th class="r">Interest</th><th class="r">Total</th><th class="r">Zeroes out</th></tr>`;
+  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="margin-top:8px;min-width:460px"><tr><th>Year</th><th class="r">Tax</th><th class="r">Penalty</th><th class="r">Interest</th><th class="r">Total</th><th class="r">Zeroes out</th></tr>`;
   const byYr={};for(const a of N.accs)byYr[a.year]=a; // current balances, not payoff-date ones
   for(const a of cfg.accounts){const e=byYr[a.year];const tot=e.tax+e.pen+e.int;
    h+=`<tr><td>${a.year}</td><td class="r">${fmt(e.tax)}</td><td class="r">${fmt(e.pen)}</td><td class="r">${fmt(e.int)}</td><td class="r"><b>${fmt(tot)}</b></td><td class="r pos">${N.zeros[a.year]||(E.zeros[a.year]||'—')}</td></tr>`}
-  h+=`</table>
+  h+=`</table></div>
   <div class="row" style="margin-top:10px"><span class="tiny">Projected payoff</span><span class="num">${E.payoff||'⚠ Never at '+fmt(cfg.payAmt)+'/mo — raise the payment'}</span></div>
   <div class="row"><span class="tiny">Interest paid so far</span><span class="num amb">${fmt(N.intPaid)}</span></div>
   <div class="row"><span class="tiny">Penalties paid so far</span><span class="num amb">${fmt(N.penPaid)}</span></div>
