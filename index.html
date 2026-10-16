@@ -207,7 +207,7 @@ function catOf(k,amt){if(CATX[k]&&CAT_KIND[CATX[k]])return CAT_KIND[CATX[k]];if(
 const DEBTN=['Affirm','Discover Loan','Loan Depot','IRS','HELOC','Extra Debt Pay'];
 const store=(()=>{try{const t='__cf_t';localStorage.setItem(t,t);localStorage.removeItem(t);return localStorage}catch(e){const m={};return{getItem:k=>(k in m)?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}})();
 function computeBal(d){const rows=[...d.rows].sort((a,b)=>a.date<b.date?-1:1);let b=(d.meta&&d.meta.startBal)||0;const out=[];for(const t of rows){for(const k in t){if(k!=='date')b+=t[k]}out.push([t.date,Math.round(b*100)/100])}return out}
-function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};
+function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||{},interest:pl.interest||{},irs:pl.irs||null,taxbill:pl.taxbill||{series:[[(pl.rows[0]||{}).date||dstr,0]],interest:0,penalty:0,payoff:null,pay_sched:[]}};
  // merge rows that share a date (self-heal duplicate rows from older builds)
  const byDate={};const merged=[];
  for(const r of d.rows){if(!byDate[r.date]){byDate[r.date]=r;merged.push(r)}else{const tgt=byDate[r.date];for(const k in r){if(k==='date')continue;tgt[k]=(tgt[k]||0)+r[k]}}}
@@ -216,6 +216,7 @@ function applyPlan(pl){const d={meta:pl.meta||{},rows:pl.rows,series:pl.series||
 const KEY='cfplan_v2';
 try{const saved=JSON.parse(store.getItem(KEY)||'null');if(saved&&saved.rows&&saved.rows.length&&saved.meta)D=applyPlan(saved)}catch(e){}
 if(!D.bal)D=applyPlan(D);
+if(!D.sample)irsInit();
 const fmt=n=>{const s=Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return (n<0?'-$':'$')+s};
 const fmtK=n=>{const a=Math.abs(n);return (n<0?'-$':'$')+(a>=1000?(a/1000).toFixed(a>=10000?0:1)+'k':a.toFixed(0))};
 const today=new Date();const dstr=today.toISOString().slice(0,10);
@@ -404,7 +405,7 @@ function renderToday(){
  <div class="btnrow" style="max-width:320px;margin:8px auto 0"><button class="btn-s" onclick="pickFile()">📄 Import my spreadsheet</button></div>
  <div class="tiny" style="margin-top:14px">Tip: guided setup takes about 5 minutes.</div></div>`;
  return}
- const b=balOn(dstr);const tIrs=taxOn(dstr);
+const b=balOn(dstr);const tIrs=D.irs?irsTotal():taxOn(dstr);
  const start=(D.meta&&D.meta.startBal)||D.bal[0][1];
  const startLbl=(D.meta&&D.meta.startBal)?'plan start':'start '+D.bal[0][0];
  const SUPD=suppressedKeys();
@@ -591,7 +592,8 @@ function renderMonth(){
 // ---------- USER DEBTS (editable) ----------
 let DE_EDIT=null;
 function myDebts(){if(!D)D={};if(!D.meta)D.meta={};if(!D.meta.debts)D.meta.debts=[];return D.meta.debts}
-function persistDebts(){const saved=JSON.parse(store.getItem(KEY)||'null');if(saved){saved.meta=saved.meta||{};saved.meta.debts=D.meta.debts||[];store.setItem(KEY,JSON.stringify(saved))}else store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal?D.bal[0][1]:0,start:'2026-06-01',builtin:true},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,bal:D.bal,debts:D.meta.debts}))}
+function persistDebts(){const saved=JSON.parse(store.getItem(KEY)||'null');if(saved){saved.meta=saved.meta||{};saved.meta.debts=D.meta.debts||[];saved.irs=D.irs;store.setItem(KEY,JSON.stringify(saved))}else store.setItem(KEY,JSON.stringify({meta:{startBal:D.bal?D.bal[0][1]:0,start:'2026-06-01',builtin:true},rows:D.rows,series:D.series,interest:D.interest,taxbill:D.taxbill,irs:D.irs,bal:D.bal,debts:D.meta.debts}))}
+function persistAll(){const saved=JSON.parse(store.getItem(KEY)||'null')||{meta:{startBal:D.bal?D.bal[0][1]:0,start:'2026-06-01',builtin:true}};saved.meta=saved.meta||{};saved.meta.debts=D.meta.debts||[];saved.rows=D.rows;saved.series=D.series;saved.interest=D.interest;saved.taxbill=D.taxbill;saved.irs=D.irs;saved.bal=D.bal;store.setItem(KEY,JSON.stringify(saved))}
 function uDebt(d){
  // collect extra payments from the ledger: entries named "<Debt> extra" (e.g. "IRS extra pay")
  const extras={};
@@ -674,6 +676,79 @@ function deForm(){
  h+=`<input type="date" id="db-start" value="${e.start||dstr}">`;
  h+='</div><div class="btnrow"><button class="btn-p" onclick="saveDebt()">Save debt</button><button class="btn-s" onclick="DE_EDIT=null;renderDebts()">Cancel</button></div></div>';
  return h}
+// ---------- IRS ENGINE ----------
+// Models the real IRS structure: one account per tax year, payments applied
+// interest → penalty → tax within each account, oldest year first.
+// Interest: APR% yearly, accrued daily on remaining tax + penalty.
+// FTP penalty: penRate% of remaining TAX per month, capped at 25% of the tax.
+function irsInit(){
+ if(D.irs)return;
+ if(D.sample){
+  D.irs={payDay:15,payAmt:1245,apr:7,penRate:0.5,start:dstr,accounts:[
+   {year:2021,tax0:14200,tax:14200,pen:660,int:1740},
+   {year:2022,tax0:11150,tax:11150,pen:440,int:800},
+   {year:2023,tax0:6400,tax:6400,pen:267,int:620}]};
+ }else{
+  // Demo defaults for new users. Real numbers come from importing a plan JSON
+  // (Settings → Import plan) or entering your own in guided setup.
+  D.irs={payDay:15,payAmt:1745,apr:7,penRate:0.5,start:dstr,accounts:[
+   {year:2021,tax0:25000,tax:25000,pen:1150,int:3100},
+   {year:2022,tax0:20000,tax:20000,pen:780,int:1450},
+   {year:2023,tax0:11500,tax:11500,pen:480,int:1120}]};
+  if(D.meta&&D.meta.irsReal&&D.meta.irsAccounts){
+   D.irs.accounts=D.meta.irsAccounts.map(a=>({year:a.year,tax0:a.tax0,tax:a.tax0,pen:a.pen,int:a.int}));
+   D.irs.payAmt=D.meta.irsPayAmt||D.irs.payAmt;
+   D.irs.payDay=D.meta.irsPayDay||D.irs.payDay;
+   D.irs.start=D.meta.irsStart||dstr;
+  }
+ }
+ persistAll()
+}
+function irsExtras(){const x=[];if(D&&D.rows)for(const r of D.rows)for(const k in r){if(k==='date')continue;
+ const nk=k.toLowerCase().replace(/ extra.*$/,'').trim();
+ if(nk==='irs'&&/ extra/i.test(k)&&r[k]<0)x.push({d:r.date,a:-r[k]})}
+ return x.sort((a,b)=>a.d<b.d?-1:1)}
+function irsWaterfall(amt,accs){let left=amt;
+ for(const a of accs){for(const f of ['int','pen','tax']){if(left<=0.004)return 0;const t=Math.min(left,a[f]);if(t>0){a[f]-=t;left-=t}}}
+ return left}
+function irsSim(until){
+ irsInit();const cfg=D.irs;
+ const accs=cfg.accounts.map(a=>({year:a.year,tax0:a.tax0,tax:a.tax,pen:a.pen,int:a.int}));
+ const r=cfg.apr/36500,pr=cfg.penRate/100;
+ const st=new Date(cfg.start+'T12:00:00');
+ const ld=z=>z.getFullYear()+'-'+String(z.getMonth()+1).padStart(2,'0')+'-'+String(z.getDate()).padStart(2,'0');
+ const pays=[];
+ let pm=new Date(st.getFullYear(),st.getMonth(),cfg.payDay);if(pm<st)pm.setMonth(pm.getMonth()+1);
+ while(pm<=until){pays.push({d:ld(pm),a:cfg.payAmt});pm.setMonth(pm.getMonth()+1)}
+ for(const e of irsExtras())pays.push({d:e.d,a:e.a});
+ pays.sort((a,b)=>a.d<b.d?-1:1);
+ const series=[],zeros={};let pi=0,intPaid=0,penPaid=0,payoff=null,intAll=0,penAll=0;
+ let cur=new Date(st.getTime());
+ while(cur<=until){
+  const cd=ld(cur);
+  while(pi<pays.length&&pays[pi].d<=cd){irsWaterfall(pays[pi].a,accs);pi++}
+  for(const a of accs){if(!zeros[a.year]&&a.tax+a.pen+a.int<=0.004)zeros[a.year]=cd}
+  const tot=accs.reduce((s,a)=>s+a.tax+a.pen+a.int,0);
+  series.push([cd,Math.round(tot*100)/100]);
+  if(tot<=0.01&&!payoff)payoff=cd;
+  const base=accs.reduce((s,a)=>s+a.tax+a.pen,0);
+  let intx=0;accs.forEach(a=>{const sh=(a.tax+a.pen)*r;a.int+=sh;intx+=sh});
+  if(cd<=dstr)intPaid+=intx;intAll+=intx;
+  if(cur.getDate()===cfg.payDay){let px=0;accs.forEach(a=>{const cap=0.25*a.tax0;const add=Math.min(pr*a.tax,Math.max(0,cap-a.pen));a.pen+=add;px+=add});
+   if(cd<=dstr)penPaid+=px;penAll+=px}
+  cur.setDate(cur.getDate()+1)}
+ return{accs,series,zeros,payoff,intPaid,penPaid,intAll,penAll,tot:series.length?series[series.length-1][1]:0}}
+function irsNow(){return irsSim(new Date(dstr+'T12:00:00'))}
+function irsEnd(){return irsSim(new Date(today.getFullYear()+60,0,1))}
+function irsTotal(){return irsNow().tot}
+function irsAddExtra(){
+ const amt=parseFloat(document.getElementById('ir-x-amt').value)||0;
+ const dt=document.getElementById('ir-x-date').value||dstr;
+ if(!amt){alert('Enter the extra amount');return}
+ D.rows.push({date:dt,'IRS extra pay':-amt});
+ D=applyPlan({meta:D.meta,rows:D.rows,series:D.series,interest:D.interest,irs:D.irs});
+ persistAll();renderDebts();renderToday()}
+
 // ---------- DEBTS ----------
 function renderDebts(){
  let h='';if(!D.interest)D.interest={};
@@ -693,7 +768,25 @@ function renderDebts(){
   <div class="bar"><i style="width:${done}%;background:${meta.color}"></i></div>
   <div class="row" style="margin-top:8px"><span class="tiny">Projected payoff</span><span class="num">${payoff}</span></div></div>`;
  }
- if(D.taxbill&&D.taxbill.series[0][1]>0){const T=D.taxbill,s=T.series;const cur=taxOn(dstr)
+ if(D.irs){irsInit();const N=irsNow(),E=irsEnd(),cfg=D.irs;
+  const cur=N.tot,start=cfg.accounts.reduce((s,a)=>s+a.tax0,0),done=(1-cur/start)*100;
+  const exT=irsExtras().reduce((a,e)=>a+e.a,0);
+  h+=`<div class="card" style="border-left:4px solid #ff6b6b"><div class="row"><h2 style="margin:0">IRS installment</h2><span class="chip">${cfg.apr}% + ${cfg.penRate}%/mo FTP penalty</span></div>
+  <div class="bal" style="font-size:30px;margin:6px 0">${fmt(cur)}</div>
+  <div class="bar"><i style="width:${done}%;background:#ff6b6b"></i></div>
+  <table style="margin-top:8px"><tr><th>Year</th><th class="r">Tax</th><th class="r">Penalty</th><th class="r">Interest</th><th class="r">Total</th><th class="r">Zeroes out</th></tr>`;
+  const byYr={};for(const a of E.accs)byYr[a.year]=a;
+  for(const a of cfg.accounts){const e=byYr[a.year];const tot=e.tax+e.pen+e.int;
+   h+=`<tr><td>${a.year}</td><td class="r">${fmt(e.tax)}</td><td class="r">${fmt(e.pen)}</td><td class="r">${fmt(e.int)}</td><td class="r"><b>${fmt(tot)}</b></td><td class="r pos">${N.zeros[a.year]||(E.zeros[a.year]||'—')}</td></tr>`}
+  h+=`</table>
+  <div class="row" style="margin-top:10px"><span class="tiny">Projected payoff</span><span class="num">${E.payoff||'⚠ Never at '+fmt(cfg.payAmt)+'/mo — raise the payment'}</span></div>
+  <div class="row"><span class="tiny">Interest paid so far</span><span class="num amb">${fmt(N.intPaid)}</span></div>
+  <div class="row"><span class="tiny">Penalties paid so far</span><span class="num amb">${fmt(N.penPaid)}</span></div>
+  <div class="row"><span class="tiny">Total interest + penalties by payoff</span><span class="num amb">${fmt(E.intAll+E.penAll)}</span></div>
+  <div class="row"><span class="tiny">Extra payments in ledger</span><span class="num pos">${fmt(exT)}</span></div>
+  <div class="row" style="gap:8px;margin-top:10px"><input type="number" step="0.01" id="ir-x-amt" placeholder="Extra payment" style="flex:2"><input type="date" id="ir-x-date" value="${dstr}" style="flex:2"><button class="btn-p" style="flex:1;padding:10px 8px" onclick="irsAddExtra()">Add</button></div>
+  <div class="tiny" style="margin-top:6px">Monthly ${fmt(cfg.payAmt)} lands on day ${cfg.payDay}. One-time extras go in the ledger as “IRS extra pay” (same as any other debt) — the projection picks them up automatically, applies them interest → penalty → tax, oldest year first, exactly like the IRS does.</div></div>`;
+ }else if(D.taxbill&&D.taxbill.series[0][1]>0){const T=D.taxbill,s=T.series;const cur=taxOn(dstr)
   const start=s[0][1],done=(1-cur/start)*100;
   h+=`<div class="card" style="border-left:4px solid #ff6b6b"><div class="row"><h2 style="margin:0">IRS installment</h2><span class="chip">7% + penalties</span></div>
   <div class="bal" style="font-size:30px;margin:6px 0">${fmt(cur)}</div>
@@ -723,7 +816,8 @@ function renderDebts(){
   if(SUPD.includes(k))continue;
   h+=`<div class="row"><span>${(DEBT_META[k]||{label:k,color:'#8b93ff'}).label}</span><span class="num amb">${fmt(D.interest[k]||0)}</span></div>`}
  for(const d of myDebts())h+=`<div class="row"><span>${d.name}</span><span class="num amb">${fmt(uDebt(d).interest)}</span></div>`;
- if(D.taxbill&&D.taxbill.series[0][1]>0)h+=`<div class="row"><span>IRS (interest only)</span><span class="num amb">${fmt(D.taxbill.interest)}</span></div><div class="row"><span>IRS penalties</span><span class="num amb">${fmt(D.taxbill.penalty)}</span></div>`;h+=`<div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span><b>Total</b></span><span class="num amb">${fmt(Object.entries(D.interest).filter(([k])=>!SUPD.includes(k)).map(x=>x[1]).reduce((a,b)=>a+b,0)+(D.taxbill?D.taxbill.interest+D.taxbill.penalty:0))}</span></div></div>`;
+ if(D.irs){const N=irsNow();h+=`<div class="row"><span>IRS (interest)</span><span class="num amb">${fmt(N.intPaid)}</span></div><div class="row"><span>IRS (penalties)</span><span class="num amb">${fmt(N.penPaid)}</span></div>`}
+ else if(D.taxbill&&D.taxbill.series[0][1]>0)h+=`<div class="row"><span>IRS (interest only)</span><span class="num amb">${fmt(D.taxbill.interest)}</span></div><div class="row"><span>IRS penalties</span><span class="num amb">${fmt(D.taxbill.penalty)}</span></div>`;h+=`<div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span><b>Total</b></span><span class="num amb">${fmt(Object.entries(D.interest).filter(([k])=>!SUPD.includes(k)).map(x=>x[1]).reduce((a,b)=>a+b,0)+(D.taxbill?D.taxbill.interest+D.taxbill.penalty:0))}</span></div></div>`;
  document.getElementById('v-debts').innerHTML=h;
 }
 
