@@ -786,13 +786,13 @@ function renderDebts(){
   <div class="row" style="margin-top:8px"><span class="tiny">Projected payoff</span><span class="num">${payoff}</span></div></div>`;
  }
  if(D.irs){irsInit();const N=irsNow(),E=irsEnd(),cfg=D.irs;
-  const cur=N.tot,start=cfg.accounts.reduce((s,a)=>s+a.tax0,0),done=(1-cur/start)*100;
+  const cur=N.tot,start=cfg.accounts.reduce((s,a)=>s+a.tax0,0),done=Math.max(0,Math.min(100,(1-cur/start)*100));
   const exT=irsExtras().reduce((a,e)=>a+e.a,0);
   h+=`<div class="card" style="border-left:4px solid #ff6b6b"><div class="row"><h2 style="margin:0">IRS installment</h2><span class="chip">${cfg.apr}% + ${cfg.penRate}%/mo FTP penalty</span></div>
   <div class="bal" style="font-size:30px;margin:6px 0">${fmt(cur)}</div>
   <div class="bar"><i style="width:${done}%;background:#ff6b6b"></i></div>
   <table style="margin-top:8px"><tr><th>Year</th><th class="r">Tax</th><th class="r">Penalty</th><th class="r">Interest</th><th class="r">Total</th><th class="r">Zeroes out</th></tr>`;
-  const byYr={};for(const a of E.accs)byYr[a.year]=a;
+  const byYr={};for(const a of N.accs)byYr[a.year]=a; // current balances, not payoff-date ones
   for(const a of cfg.accounts){const e=byYr[a.year];const tot=e.tax+e.pen+e.int;
    h+=`<tr><td>${a.year}</td><td class="r">${fmt(e.tax)}</td><td class="r">${fmt(e.pen)}</td><td class="r">${fmt(e.int)}</td><td class="r"><b>${fmt(tot)}</b></td><td class="r pos">${N.zeros[a.year]||(E.zeros[a.year]||'—')}</td></tr>`}
   h+=`</table>
