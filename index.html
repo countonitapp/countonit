@@ -137,7 +137,8 @@ svg{display:block;width:100%}
 <div class="row"><h2 style="margin:0">Edit transaction</h2><button class="btn-s" style="padding:6px 10px" onclick="closeModal()">✕</button></div>
 <div id="m-info" class="tiny" style="margin-top:8px"></div>
 <label for="m-name">Name</label><input type="text" id="m-name" placeholder="e.g. Jeff's paycheck, Water bill">
-<div class="chk"><input type="checkbox" id="m-recur"><label for="m-recur" style="margin:0">Recurring (same amount, within ±2 days)</label></div>
+<div class="chk"><input type="checkbox" id="m-recur" onchange="document.getElementById('m-rfreqrow').style.display=this.checked?'flex':'none'"><label for="m-recur" style="margin:0">Recurring (same amount, within ±2 days)</label></div>
+<div class="row" id="m-rfreqrow" style="margin-top:8px;gap:8px;display:none"><div style="flex:1"><label for="m-rfreq">Recurring pattern</label><select id="m-rfreq" style="width:100%"><option value="monthly">Same day each month</option><option value="semimonthly">15th &amp; last day of month</option><option value="semi_1_15">1st &amp; 15th of month</option></select></div></div>
 <div class="row" style="margin-top:8px;gap:8px"><div style="flex:1"><label for="m-freq">Change frequency</label><select id="m-freq" style="width:100%"><option value="">— keep current —</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div></div>
 <div id="m-hint" class="tiny" style="margin-top:6px"></div>
 <div class="btnrow"><button class="btn-p" onclick="saveTxn(true)">Save & apply to all matching</button><button class="btn-s" onclick="saveTxn(false)">Save this one</button></div>
@@ -256,12 +257,14 @@ try{RULES=JSON.parse(store.getItem('cfrules')||'[]');OVR=JSON.parse(store.getIte
 RULES=RULES.filter(r=>r&&r.k&&r.label&&r.label!=='undefined');for(const kk in OVR)if(!OVR[kk]||OVR[kk]==='undefined')delete OVR[kk];
 function saveStore(){store.setItem('cfrules',JSON.stringify(RULES));store.setItem('cfrcov',JSON.stringify(OVR));store.setItem('cfrcatx',JSON.stringify(CATX))}
 function dayDist(date,day){const d=new Date(date+'T12:00:00');const dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const dd=Math.min(day,dim);let x=Math.abs(d.getDate()-dd);return Math.min(x,Math.abs(d.getDate()-dd-0)+0,x)}
+function dayDist2(date,day){const d=new Date(date+'T12:00:00');const dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return Math.min(dayDist(date,day),dayDist(date,Math.min(day+15,dim)))}
 function matchRule(k,amt){return RULES.find(r=>r.k===k)}
 function labelOf(k,amt,date){
+ const r=matchRule(k,amt);
+ if(r&&r.label){if(r.recur&&!r.anchorEvery){const dd=(r.freq==='semimonthly')?dayDist2(date,r.day):dayDist(date,r.day);if(dd<=2)return{label:r.label,rec:true}}else return{label:r.label,rec:false}}
  const o=OVR[date+'|'+k+'|'+amt];if(o)return{o,rec:false};
- const r=matchRule(k,amt);if(!r||!r.label)return null;
- if(r.recur&&dayDist(date,r.day)>2&&!r.anchorEvery)return{label:r.label,rec:false};
- return{label:r.label,rec:r.recur}}
+ if(r&&r.label)return{label:r.label,rec:false};
+ return null}
 function matchesOf(k,amt){return D.rows.filter(t=>t[k]!==undefined&&Math.abs(Math.abs(t[k])-amt)<0.01)}
 let CUR=null;
 function editTxn(date,k,amt){
@@ -273,6 +276,7 @@ function editTxn(date,k,amt){
  const ms=matchesOf(k,Math.abs(amt));
  const near=ms.filter(t=>dayDist(t.date,new Date(date+'T12:00:00').getDate())<=2);
  document.getElementById('m-recur').checked=!!(m&&m.rec)||(ms.length>=3&&near.length>=3);
+ {const rr=RULES.find(x=>x.k===CUR.k);const rf=rr?(rr.freq==='semimonthly'?(rr.day===1?'semi_1_15':'semimonthly'):(rr.freq||'monthly')):'monthly';document.getElementById('m-rfreq').value=rf;document.getElementById('m-rfreqrow').style.display=document.getElementById('m-recur').checked?'flex':'none'}
  document.getElementById('m-hint').textContent=ms.length+' entries share this amount'+(near.length?' ('+near.length+' within ±2 days of the '+new Date(date+'T12:00:00').getDate()+'th)':'')+'. Checking recurring labels them all.';
  document.getElementById('m-amt').value=Math.abs(amt);
  document.getElementById('m-date').value=date;
@@ -341,7 +345,7 @@ function saveTxn(all){
   const n=D.rows.filter(t=>t[CUR.k]!==undefined).length;
   let r=RULES.find(x=>x.k===CUR.k);
   if(!r){r={k:CUR.k,amt:Math.abs(CUR.amt)};RULES.push(r)}
-  r.label=name;r.recur=recur;r.day=new Date(CUR.date+'T12:00:00').getDate();
+  r.label=name;r.recur=recur;{const pv=document.getElementById('m-rfreq').value||'monthly';r.freq=(pv==='semi_1_15')?'semimonthly':pv;r.day=(pv==='semi_1_15')?1:(pv==='semimonthly'?15:new Date(CUR.date+'T12:00:00').getDate())}if(r.recur)r.amt=Math.abs(signed);
   const cdt=new Date(CUR.date+'T12:00:00'),ndt=nd?new Date(nd+'T12:00:00'):null;
   const newDay=nd?ndt.getDate():null;
   const dmon=nd?((ndt.getFullYear()-cdt.getFullYear())*12+(ndt.getMonth()-cdt.getMonth())):null;
@@ -380,6 +384,7 @@ function saveTxn(all){
    else {t[CUR.k]=signed}
    break}
   if(nc){CATX[CUR.k]=(nc==='debt'?'Debt payment':nc);CAT[CUR.k]=CAT_KIND[CATX[CUR.k]]||((CUR.amt||0)>0?'income':'dec');saveStore()}
+  {const rr=RULES.find(x=>x.k===CUR.k);if(rr){const pv=document.getElementById('m-rfreq').value||'monthly';rr.label=name;rr.recur=recur;rr.freq=(pv==='semi_1_15')?'semimonthly':pv;rr.day=(pv==='semi_1_15')?1:(pv==='semimonthly'?15:new Date((nd||CUR.date)+'T12:00:00').getDate());if(rr.recur)rr.amt=Math.abs(signed);saveStore()}}
   const newKey=(nd||CUR.date)+'|'+CUR.k+'|'+signed;OVR[newKey]=name;
   saveStore();savePlan(D);D.bal=computeBal(D);refreshBal();closeModal();renderTxns();renderToday();renderCal();renderMonth();renderDebts()}
 }
@@ -391,7 +396,7 @@ function renderRules(){
  let h='';
  if(RULES.length||Object.keys(OVR).length){
   h+='<h2>Named & recurring</h2><div class="card">';
-  for(const r of RULES)h+=`<div class="txn"><div><div>${r.label}${r.recur?'<span class="recycle">♻ recurring</span>':''}</div><div class="tiny">${r.k} · ${fmt(r.amt)}${r.recur?' · day '+r.day:''}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="delRule('${r.k}',${r.amt})">Forget</button></div>`;
+  for(const r of RULES)h+=`<div class="txn"><div><div>${r.label}${r.recur?'<span class="recycle">♻ recurring'+((r.freq==='semimonthly'&&r.day===1)?' · 1st & 15th':(r.freq==='semimonthly'?' · 15th & last':'')):''}</span>':''}</div><div class="tiny">${r.k} · ${fmt(r.amt)}${r.recur?' · '+((r.freq==='semimonthly'&&r.day===1)?'1st & 15th':(r.freq==='semimonthly'?'15th & last day':'day '+r.day)):''}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="delRule('${r.k}',${r.amt})">Forget</button></div>`;
   const ov=Object.entries(OVR);if(ov.length)h+='<div class="tiny" style="padding-top:8px">'+ov.length+' one-off named entr'+(ov.length>1?'ies':'y')+' (not recurring)</div>';
   h+='</div>';}
  return h;}
