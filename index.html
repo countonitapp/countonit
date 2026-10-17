@@ -394,11 +394,16 @@ function removeTxn(){if(!CUR)return;const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  saveStore();closeModal();renderTxns();renderToday();}
 function renderRules(){
  let h='';
+ const rmatch=k=>{const catx=CATX[k]||CAT[k]||null;if(filter==='all')return true;if(!catx&&filter==='Other spending')return true;if(!catx)return false;const c=CAT_KIND[catx]||catx;if(filter==='Bills')return catx==='Bills';if(filter==='Other spending')return catx==='Other spending';if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Payroll')return catx==='Payroll';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false};
  if(RULES.length||Object.keys(OVR).length){
+  const vis=RULES.filter(r=>rmatch(r.k));
+  const ovc=Object.keys(OVR).length;
+  if(!vis.length&&!(filter==='all'&&ovc))return h;
   h+='<h2>Named & recurring</h2><div class="card">';
-  for(const r of RULES)h+=`<div class="txn"><div><div>${r.label}${r.recur?'<span class="recycle">♻ recurring'+((r.freq==='semimonthly'&&r.day===1)?' · 1st & 15th':(r.freq==='semimonthly'?' · 15th & last':'')):''}</span>':''}</div><div class="tiny">${r.k} · ${fmt(r.amt)}${r.recur?' · '+((r.freq==='semimonthly'&&r.day===1)?'1st & 15th':(r.freq==='semimonthly'?'15th & last day':'day '+r.day)):''}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="delRule('${r.k}',${r.amt})">Forget</button></div>`;
-  const ov=Object.entries(OVR);if(ov.length)h+='<div class="tiny" style="padding-top:8px">'+ov.length+' one-off named entr'+(ov.length>1?'ies':'y')+' (not recurring)</div>';
-  h+='</div>';}
+  for(const r of vis)h+=`<div class="txn"><div><div>${r.label}${r.recur?'<span class="recycle">♻ recurring'+((r.freq==='semimonthly'&&r.day===1)?' · 1st & 15th':(r.freq==='semimonthly'?' · 15th & last':'')):''}</span>':''}</div><div class="tiny">${r.k} · ${fmt(r.amt)}${r.recur?' · '+((r.freq==='semimonthly'&&r.day===1)?'1st & 15th':(r.freq==='semimonthly'?'15th & last day':'day '+r.day)):''}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="delRule('${r.k}',${r.amt})">Forget</button></div>`;
+  const ov=Object.entries(OVR);if(filter==='all'&&ov.length)h+='<div class="tiny" style="padding-top:8px">'+ov.length+' one-off named entr'+(ov.length>1?'ies':'y')+' (not recurring)</div>';
+  h+='</div>';
+ }
  return h;}
 function delRule(k,amt){RULES=RULES.filter(r=>!(r.k===k&&Math.abs(r.amt-amt)<0.01));saveStore();renderTxns();renderToday()}
 function exportRules(){const s=JSON.stringify({rules:RULES,overrides:OVR},null,1);if(navigator.clipboard)navigator.clipboard.writeText(s).then(()=>alert('Rules copied to clipboard'),()=>{});}
