@@ -40,6 +40,10 @@ th{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
 .bar{height:9px;background:var(--card2);border-radius:5px;overflow:hidden;margin:4px 0}
 .bar>i{display:block;height:100%}
 .seg{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+.seg.group{flex-wrap:nowrap;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;overflow-x:auto;scrollbar-width:none}
+.seg.group::-webkit-scrollbar{display:none}
+.seg.group button{margin:0;padding:9px 13px;font-size:12.5px;font-weight:600;border-radius:9px;background:transparent;color:var(--mut);width:auto;flex:0 0 auto;white-space:nowrap}
+.seg.group button.on{background:var(--acc);color:#fff}
 .seg button{margin:0;padding:8px 12px;font-size:12px;border-radius:10px;background:var(--card2);color:var(--mut);width:auto}
 .seg button.on{background:var(--acc);color:#fff}
 svg{display:block;width:100%}
@@ -95,7 +99,7 @@ svg{display:block;width:100%}
   <input type="text" id="si-amt" inputmode="decimal" placeholder="Amount">
   <select id="si-dir"><option value="in">Money in</option><option value="out">Money out</option></select>
   <select id="si-cat" onchange="document.getElementById('loan-fields').classList.toggle('off',this.value!=='loan')"><option>Income</option><option>Payroll</option><option>Bills</option><option>Other spending</option><option>Credit Cards</option><option value="loan">Loan (with interest)</option></select>
-  <select id="si-freq"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="semimonthly">Twice a month</option></select>
+  <select id="si-freq"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="semimonthly">Twice a month</option><option value="bimonthly">Every 2 months</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select>
   <input type="text" id="si-day" inputmode="numeric" placeholder="Day of month (1-31)">
  </div>
  <div class="tiny" style="margin:6px 0">First occurrence (optional, defaults to today):</div>
@@ -138,8 +142,8 @@ svg{display:block;width:100%}
 <div id="m-info" class="tiny" style="margin-top:8px"></div>
 <label for="m-name">Name</label><input type="text" id="m-name" placeholder="e.g. Jeff's paycheck, Water bill">
 <div class="chk"><input type="checkbox" id="m-recur" onchange="document.getElementById('m-rfreqrow').style.display=this.checked?'flex':'none'"><label for="m-recur" style="margin:0">Recurring (same amount, within ±2 days)</label></div>
-<div class="row" id="m-rfreqrow" style="margin-top:8px;gap:8px;display:none"><div style="flex:1"><label for="m-rfreq">Recurring pattern</label><select id="m-rfreq" style="width:100%"><option value="monthly">Same day each month</option><option value="semimonthly">15th &amp; last day of month</option><option value="semi_1_15">1st &amp; 15th of month</option></select></div></div>
-<div class="row" style="margin-top:8px;gap:8px"><div style="flex:1"><label for="m-freq">Change frequency</label><select id="m-freq" style="width:100%"><option value="">— keep current —</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div></div>
+<div class="row" id="m-rfreqrow" style="margin-top:8px;gap:8px;display:none"><div style="flex:1"><label for="m-rfreq">Recurring pattern</label><select id="m-rfreq" style="width:100%"><option value="monthly">Same day each month</option><option value="semimonthly">15th &amp; last day of month</option><option value="semi_1_15">1st &amp; 15th of month</option><option value="bimonthly">Every 2 months</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></div></div>
+<div class="row" style="margin-top:8px;gap:8px"><div style="flex:1"><label for="m-freq">Change frequency</label><select id="m-freq" style="width:100%"><option value="">— keep current —</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="bimonthly">Every 2 months</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></div></div>
 <div id="m-hint" class="tiny" style="margin-top:6px"></div>
 <div class="btnrow"><button class="btn-p" onclick="saveTxn(true)">Save & apply to all matching</button><button class="btn-s" onclick="saveTxn(false)">Save this one</button></div>
 <div class="row" style="margin-top:10px;gap:8px"><div style="flex:1"><label for="m-amt">Amount</label><input type="number" step="0.01" id="m-amt" style="width:100%"></div><div style="flex:1"><label for="m-date">Date</label><input type="date" id="m-date" style="width:100%"></div></div>
@@ -152,7 +156,7 @@ svg{display:block;width:100%}
 <div class="tiny" style="margin-top:8px">Creates a new entry or recurring series without touching anything else in your plan.</div>
 <div class="row" style="gap:8px;margin-top:12px"><div style="flex:1"><label for="a-name">Name</label><input type="text" id="a-name" placeholder="e.g. Water bill"></div><div style="flex:1"><label for="a-amt">Amount</label><input type="number" step="0.01" id="a-amt"></div></div>
 <div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-dir">Direction</label><select id="a-dir" style="width:100%"><option value="out">Out (money going out)</option><option value="in">In (money coming in)</option></select></div><div style="flex:1"><label for="a-cat">Category</label><select id="a-cat" style="width:100%" onchange="document.getElementById('a-loanfields').style.display=this.value==='debt'?'block':'none'"><option>Income</option><option>Payroll</option><option>Bills</option><option>Other spending</option><option>Credit Cards</option><option value="debt">Debt payment</option></select></div></div>
-<div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-freq">Frequency</label><select id="a-freq" style="width:100%" onchange="document.getElementById('a-dayrow').style.display=this.value==='once'?'none':'block'"><option value="once">Once</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div><div style="flex:1"><label for="a-start">Starts on</label><input type="date" id="a-start"></div></div>
+<div class="row" style="gap:8px;margin-top:8px"><div style="flex:1"><label for="a-freq">Frequency</label><select id="a-freq" style="width:100%" onchange="document.getElementById('a-dayrow').style.display=this.value==='once'?'none':'block'"><option value="once">Once</option><option value="monthly">Monthly</option><option value="semimonthly">Twice a month</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="bimonthly">Every 2 months</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></div><div style="flex:1"><label for="a-start">Starts on</label><input type="date" id="a-start"></div></div>
 <div class="row" id="a-dayrow" style="gap:8px;margin-top:8px;display:none"><div style="flex:1"><label for="a-day">Day of month (1–31)</label><input type="number" id="a-day" min="1" max="31" value="1"></div></div>
 <div id="a-loanfields" style="display:none;border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
 <div class="tiny" style="margin-bottom:8px"><b>Debt details</b> — used for payoff tracking. Leave APR at 0 for no interest.</div>
@@ -276,7 +280,7 @@ function editTxn(date,k,amt){
  const ms=matchesOf(k,Math.abs(amt));
  const near=ms.filter(t=>dayDist(t.date,new Date(date+'T12:00:00').getDate())<=2);
  document.getElementById('m-recur').checked=!!(m&&m.rec)||(ms.length>=3&&near.length>=3);
- {const rr=RULES.find(x=>x.k===CUR.k);const rf=rr?(rr.freq==='semimonthly'?(rr.day===1?'semi_1_15':'semimonthly'):(rr.freq||'monthly')):'monthly';document.getElementById('m-rfreq').value=rf;document.getElementById('m-rfreqrow').style.display=document.getElementById('m-recur').checked?'flex':'none'}
+ {const rr=RULES.find(x=>x.k===CUR.k);const rf=rr?((rr.freq==='semimonthly')?(rr.day===1?'semi_1_15':'semimonthly'):(rr.freq||'monthly')):'monthly';document.getElementById('m-rfreq').value=rf;document.getElementById('m-rfreqrow').style.display=document.getElementById('m-recur').checked?'flex':'none'}
  document.getElementById('m-hint').textContent=ms.length+' entries share this amount'+(near.length?' ('+near.length+' within ±2 days of the '+new Date(date+'T12:00:00').getDate()+'th)':'')+'. Checking recurring labels them all.';
  document.getElementById('m-amt').value=Math.abs(amt);
  document.getElementById('m-date').value=date;
@@ -392,6 +396,7 @@ function removeTxn(){if(!CUR)return;const key=CUR.date+'|'+CUR.k+'|'+CUR.amt;
  delete OVR[key];
  RULES=RULES.filter(r=>!(r.k===CUR.k&&Math.abs(r.amt-Math.abs(CUR.amt))<0.01));
  saveStore();closeModal();renderTxns();renderToday();}
+function freqTxt(r,plain){const s=plain?' · ':'';if(r.freq==='semimonthly')return s+((r.day===1)?'1st & 15th':'15th & last day');if(r.freq==='bimonthly')return s+'every 2 months';if(r.freq==='quarterly')return s+'quarterly';if(r.freq==='yearly')return s+'yearly';return s+'day '+r.day}
 function renderRules(){
  let h='';
  const rmatch=k=>{const catx=CATX[k]||CAT[k]||null;if(filter==='all')return true;if(!catx&&filter==='Other spending')return true;if(!catx)return false;const c=CAT_KIND[catx]||catx;if(filter==='Bills')return catx==='Bills';if(filter==='Other spending')return catx==='Other spending';if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Payroll')return catx==='Payroll';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false};
@@ -400,7 +405,7 @@ function renderRules(){
   const ovc=Object.keys(OVR).length;
   if(!vis.length&&!(filter==='all'&&ovc))return h;
   h+='<h2>Named & recurring</h2><div class="card">';
-  for(const r of vis)h+=`<div class="txn"><div><div>${r.label}${r.recur?'<span class="recycle">♻ recurring'+((r.freq==='semimonthly'&&r.day===1)?' · 1st & 15th':(r.freq==='semimonthly'?' · 15th & last':'')):''}</span>':''}</div><div class="tiny">${r.k} · ${fmt(r.amt)}${r.recur?' · '+((r.freq==='semimonthly'&&r.day===1)?'1st & 15th':(r.freq==='semimonthly'?'15th & last day':'day '+r.day)):''}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="delRule('${r.k}',${r.amt})">Forget</button></div>`;
+  for(const r of vis)h+=`<div class="txn"><div><div>${r.label}${r.recur?'<span class="recycle">♻ recurring'+freqTxt(r):''}</span>':''}</div><div class="tiny">${r.k} · ${fmt(r.amt)}${r.recur?' · '+freqTxt(r,true):''}</div></div><button class="btn-d" style="padding:6px 10px;font-size:12px;flex:none" onclick="delRule('${r.k}',${r.amt})">Forget</button></div>`;
   const ov=Object.entries(OVR);if(filter==='all'&&ov.length)h+='<div class="tiny" style="padding-top:8px">'+ov.length+' one-off named entr'+(ov.length>1?'ies':'y')+' (not recurring)</div>';
   h+='</div>';
  }
@@ -853,8 +858,8 @@ let filter='all';
 function openSettings(){document.getElementById('setmodal').classList.add('on')}
 function renderTxns(){
  const cats=['all','Income','Payroll','Bills','Other spending','Credit Cards','Debt'];
- let h=`<div class="seg">`;
- for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='all'?'All':c}</button>`;
+ let h=`<div class="seg group">`;
+ for(const c of cats)h+=`<button class="${filter===c?'on':''}" onclick="setF('${c}')">${c==='Debt'?'Debt payment':(c==='all'?'All':c)}</button>`;
  const FKIND={'Income':'income','Payroll':'income','Bills':'dec','Credit Cards':'dec','Debt':'debt'};
  function fmatch(k,amt){if(filter==='all')return true;const catx=CATX[k]||CAT[k]||null;const c=catx?(CAT_KIND[catx]||catx):((amt||0)>0?'income':'dec');if(filter==='Payroll')return catx==='Payroll';if(filter==='Bills')return catx==='Bills';if(filter==='Other spending')return catx==='Other spending'||(c==='dec'&&!catx);if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false}
  h+='</div>';
@@ -883,6 +888,7 @@ function nextOccFrom(freq,day,fromStr){
  const d=new Date(fromStr+'T12:00:00');
  if(freq==='weekly')return new Date(d.getTime()+7*86400000);
  if(freq==='biweekly')return new Date(d.getTime()+14*86400000);
+ if(freq==='bimonthly'||freq==='quarterly'||freq==='yearly'){const n=freq==='bimonthly'?2:freq==='quarterly'?3:12;const e=new Date(d.getFullYear(),d.getMonth()+n+1,0).getDate();return new Date(d.getFullYear(),d.getMonth()+n,Math.min(day,e))}
  if(freq==='monthly'){const o=advM(d,day);return o>=d?o:advM(new Date(d.getFullYear(),d.getMonth()+1,1),day)}
  if(freq==='semimonthly'){const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const d1=Math.min(day,e),d2=Math.min(day+15,e);const o1=new Date(d.getFullYear(),d.getMonth(),d1),o2=new Date(d.getFullYear(),d.getMonth(),d2);if(o1>=d)return o1;if(o2>d)return o2;return advM(new Date(d.getFullYear(),d.getMonth()+1,1),day)}
  return advM(d,day)
@@ -922,13 +928,13 @@ function addEntry(){
   }
  }else{
   let dd=new Date(start+'T12:00:00');
-  if(freq!=='once'){const first=nextOccFrom(freq,day,start);if(first>dd)dd=first}
+  if(freq!=='once'){if(freq==='bimonthly'||freq==='quarterly'||freq==='yearly'){dd=new Date(start+'T12:00:00')}else{const first=nextOccFrom(freq,day,start);if(first>dd)dd=first}}
   while(dd<=end){
    const ds=dd.toISOString().slice(0,10);
    let row=D.rows.find(r=>r.date===ds);
    if(!row){row={date:ds};D.rows.push(row);D.rows.sort((a,b2)=>a.date.localeCompare(b2.date))}
    row[name]=(row[name]||0)+sign*amt;
-   dd=freq==='once'?new Date('9999-12-31'):(freq==='weekly'?new Date(dd.getTime()+7*86400000):freq==='biweekly'?new Date(dd.getTime()+14*86400000):freq==='semimonthly'?nextOccFrom(freq,day,ds):advM(new Date(dd.getFullYear(),dd.getMonth()+1,1),day))
+   dd=freq==='once'?new Date('9999-12-31'):(freq==='weekly'?new Date(dd.getTime()+7*86400000):freq==='biweekly'?new Date(dd.getTime()+14*86400000):(freq==='bimonthly'||freq==='quarterly'||freq==='yearly')?nextOccFrom(freq,day,ds):freq==='semimonthly'?nextOccFrom(freq,day,ds):advM(new Date(dd.getFullYear(),dd.getMonth()+1,1),day))
   }
  }
  const cn=(cat==='debt'?'Debt payment':cat);CAT[name]=CAT_KIND[cn]||((sign*amt||0)>0?'income':'dec');
@@ -1052,6 +1058,7 @@ function addSetup(){
  document.getElementById('loan-fields').classList.add('off');renderSetup();
 }
 function adv(d,freq,day){
+ if(freq==='bimonthly'||freq==='quarterly'||freq==='yearly'){const n=freq==='bimonthly'?2:freq==='quarterly'?3:12;const e=new Date(d.getFullYear(),d.getMonth()+n+1,0).getDate();return new Date(d.getFullYear(),d.getMonth()+n,Math.min(day,e))}
  if(freq==='monthly'){const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return new Date(d.getFullYear(),d.getMonth()+1,Math.min(day,e))}
  if(freq==='weekly')return new Date(d.getTime()+7*86400000);
  if(freq==='biweekly')return new Date(d.getTime()+14*86400000);
@@ -1062,6 +1069,7 @@ function adv(d,freq,day){
 }
 function nextOcc(freq,day,from){
  const d=new Date(from+'T12:00:00');
+ if(freq==='bimonthly'||freq==='quarterly'||freq==='yearly'){const n=freq==='bimonthly'?2:freq==='quarterly'?3:12;const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const o=new Date(d.getFullYear(),d.getMonth(),Math.min(day,e));return o<d?new Date(d.getFullYear(),d.getMonth()+n,Math.min(day,new Date(d.getFullYear(),d.getMonth()+n+1,0).getDate())):o}
  if(freq==='monthly'){const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();const o=new Date(d.getFullYear(),d.getMonth(),Math.min(day,e));return o<d?adv(d,freq,day):o}
  if(freq==='weekly'||freq==='biweekly'){const step=freq==='weekly'?7:14;let o=new Date(d.getTime());const t=new Date(dstr+'T12:00:00');while(o<t)o=new Date(o.getTime()+step*86400000);return o}
  const e=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
