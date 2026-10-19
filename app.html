@@ -854,12 +854,12 @@ let filter='all';
 function openSettings(){document.getElementById('setmodal').classList.add('on')}
 function renderTxns(){
  const cats=['all','Income','Payroll','Bills','Other spending','Credit Cards','Debt'];
- let h=`<div class="row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><select id="f-sel" class="btn-s" style="flex:1;padding:10px 12px;font-size:14px" onchange="setF(this.value)">`;
+ let h=`<div class="row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;justify-content:flex-start"><select id="f-sel" class="btn-s" style="width:auto;max-width:70%;flex:0 1 auto;padding:10px 12px;font-size:14px" onchange="setF(this.value)">`;
  for(const c of cats)h+=`<option value="${c}" ${filter===c?'selected':''}>${c==='Debt'?'Debt payment':(c==='all'?'All':c)}</option>`;
  h+=`</select>`;
  const FKIND={'Income':'income','Payroll':'income','Bills':'dec','Credit Cards':'dec','Debt':'debt'};
  function fmatch(k,amt){if(filter==='all')return true;const catx=CATX[k]||CAT[k]||null;const c=catx?(CAT_KIND[catx]||catx):((amt||0)>0?'income':'dec');if(filter==='Payroll')return catx==='Payroll';if(filter==='Bills')return catx==='Bills';if(filter==='Other spending')return catx==='Other spending'||(c==='dec'&&!catx);if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false}
- h+=`<button class="btn-s" id="orderbtn" style="flex-shrink:0" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button></div>`;
+ h+=`<button class="btn-s" id="orderbtn" style="flex-shrink:0;padding:10px 14px;font-size:14px" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button></div>`;
  let list=D.rows.slice().sort((a,b)=>txnNewest?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
  if(txnNewest){const fut=list.filter(t=>t.date>=dstr).sort((a,b)=>a.date.localeCompare(b.date)),past=list.filter(t=>t.date<dstr).sort((a,b)=>b.date.localeCompare(a.date));list=fut.concat(past)}
  if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k,t[k])));
