@@ -31,6 +31,7 @@ input,select{background:var(--card2);border:1px solid var(--line);color:var(--tx
 nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:640px;background:rgba(20,26,38,.95);backdrop-filter:blur(10px);border:1px solid var(--line);border-bottom:none;border-radius:14px 14px 0 0;display:flex;z-index:5;margin-bottom:0}
 nav button{margin:0;background:none;color:var(--mut);font-size:12px;font-weight:600;padding:12px 0 18px;border-radius:0;flex:1;min-width:0}
 @supports(padding:max(0px)){nav{padding-bottom:env(safe-area-inset-bottom)}}
+@supports(padding:max(0px)){.wrap{padding-top:max(16px,calc(16px + env(safe-area-inset-top)))}}
 nav button.on{color:var(--acc)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{padding:7px 5px;text-align:left;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
