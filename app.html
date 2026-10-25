@@ -434,7 +434,8 @@ const b=balOn(dstr);const tIrs=D.irs?irsTotal():taxOn(dstr);
  const startLbl=(D.meta&&D.meta.startBal)?'plan start':'start '+D.bal[0][0];
  const SUPD=suppressedKeys();
  const dl=debtLastOf();
- const totDebt=Object.entries(dl).filter(([k])=>k!=='Extra Debt Pay'&&!SUPD.includes(k)).reduce((a,[,v])=>a+v,0)+myDebts().reduce((a,d)=>a+uDebt(d).cur,0);
+ const engIrs=(!(D.irs)||myDebts().some(d=>/^irs/i.test(d.name)))?0:(irsTotal()||0);
+const totDebt=Object.entries(dl).filter(([k])=>k!=='Extra Debt Pay'&&!SUPD.includes(k)).reduce((a,[,v])=>a+v,0)+myDebts().reduce((a,d)=>a+uDebt(d).cur,0)+engIrs;
  const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SUPD.includes(k)).reduce((a,[,s])=>a+s[0][1],0)+myDebts().reduce((a,d)=>a+d.bal,0);
  const paid=startDebt-totDebt;
  const pct=Math.max(0,Math.min(100,startDebt?paid/startDebt*100:0));
@@ -445,11 +446,28 @@ const b=balOn(dstr);const tIrs=D.irs?irsTotal():taxOn(dstr);
  const up=[];
  const from=new Date(dstr),until=new Date(from);until.setDate(until.getDate()+30);
  for(const t of D.rows){const d=new Date(t.date+'T12:00:00');if(d>=from&&d<=until){for(const k in t){if(k==='date')continue;up.push({date:t.date,k,amt:t[k]})}}}
+ // engine-scheduled debt payments: include even if the ledger rows are stale or missing
+ const have=new Set(up.map(u=>u.date+'|'+u.k.toLowerCase()+'|'+u.amt));
+ for(const dd of myDebts()){
+  if(!(dd.bal>0)||dd.closed)continue;
+  const day=Math.min(dd.day||15,28);
+  for(let m=0;m<2;m++){
+   const dt=new Date(from.getFullYear(),from.getMonth()+m,day);
+   if(dt<from||dt>until)continue;
+   const ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+   if(!have.has(ds+'|'+dd.name.toLowerCase()+'|'+dd.pay))up.push({date:ds,k:dd.name,amt:-dd.pay,eng:1})}}
+ if(D.irs&&irsTotal()>0.5){
+  const day=Math.min(D.irs.payDay||15,28);
+  for(let m=0;m<2;m++){
+   const dt=new Date(from.getFullYear(),from.getMonth()+m,day);
+   if(dt<from||dt>until)continue;
+   const ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+   if(!have.has(ds+'|irs|'+D.irs.payAmt))up.push({date:ds,k:'IRS',amt:-D.irs.payAmt,eng:1})}}
  up.sort((a,b)=>a.date<b.date?-1:1);
  h+=`<h2>Next 30 days</h2><div class="card">`;
  if(!up.length)h+=`<div class="tiny">Nothing scheduled</div>`;
  for(const u of up.slice(0,25)){const c=catOf(u.k,u.amt);const L=labelOf(u.k,u.amt,u.date);
-  h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${(L&&L.label&&!['undefined'].includes(L.label))?L.label:u.k}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
+  h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${(L&&L.label&&!['undefined'].includes(L.label))?L.label:u.k}${u.eng?' <span class="tiny" style="color:var(--amber)">scheduled</span>':''}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
  if(up.length>25)h+=`<div class="tiny" style="padding-top:8px">+ ${up.length-25} more this period</div>`;
  h+='</div>';
  // debt snapshot
@@ -462,8 +480,9 @@ const b=balOn(dstr);const tIrs=D.irs?irsTotal():taxOn(dstr);
   const s=D.series[k];let last=s[0][1],start0=s[0][1];for(const p of s){if(p[0]<=dstr)last=p[1];else break}
   const done=(1-last/start0)*100;
   h+=`<div class="row" style="margin-top:12px"><div><div style="font-weight:600;font-size:14px">${(DEBT_META[k]||{label:k,color:'#8b93ff'}).label}</div><div class="tiny">${fmt(last)} · ${done.toFixed(0)}% paid</div><div class="bar" style="width:150px"><i style="width:${done}%;background:${(DEBT_META[k]||{label:k,color:'#8b93ff'}).color}"></i></div></div><span class="num">${fmt(last)}</span></div>`}
- for(const d of myDebts()){const u=uDebt(d);const done=Math.max(0,Math.min(100,(1-u.cur/d.bal)*100));
+ for(const d of myDebts()){if(!(d.bal>0))continue;const u=uDebt(d);const done=Math.max(0,Math.min(100,(1-u.cur/d.bal)*100));
   h+=`<div class="row" style="margin-top:12px"><div><div style="font-weight:600;font-size:14px">${d.name}${d.closed?' (closed)':''}</div><div class="tiny">${fmt(u.cur)} · ${done.toFixed(0)}% paid</div><div class="bar" style="width:150px"><i style="width:${done}%;background:#3ecf8e"></i></div></div><span class="num">${fmt(u.cur)}</span></div>`}
+ if(engIrs>0.5)h+=`<div class="row" style="margin-top:12px"><div><div style="font-weight:600;font-size:14px">IRS (engine)</div><div class="tiny">${fmt(engIrs)} · tax+penalty+interest, accruing · pays ${fmt(D.irs.payAmt)} on the ${D.irs.payDay}th</div><div class="bar" style="width:150px"><i style="width:100%;background:#e6a23c"></i></div></div><span class="num">${fmt(engIrs)}</span></div>`;
  h+='</div>';
  // balance chart
  h+=`<h2>Balance — full plan</h2><div class="card" id="chartwrap"></div>`;
