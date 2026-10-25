@@ -649,7 +649,7 @@ function uDebt(d){
  const extras={};
  if(D&&D.rows)for(const r of D.rows){for(const k in r){if(k==='date')continue;
   const nk=k.toLowerCase().replace(/ extra.*$/,'').trim();
-  if(nk===d.name.toLowerCase()&&/ extra/i.test(k)&&r[k]<0)extras[r.date]=(extras[r.date]||0)-r[k]}}
+  if(nk===d.name.toLowerCase()&&r[k]<0&&r.date<d.start)extras[r.date]=(extras[r.date]||0)-r[k]}}
  const st=new Date(d.start+'T12:00:00');
  const stop=d.closed?new Date(d.closed+'T12:00:00'):new Date(dstr+'T12:00:00');
  const day=Math.min(d.day||15,28);
@@ -659,23 +659,25 @@ function uDebt(d){
  function sim(until){
   const r=d.apr/36500;
   // scheduled payment dates: d.day each month from start; extras: their ledger dates
-  const pays=[];let pm=new Date(st.getFullYear(),st.getMonth(),day);if(pm<st)pm.setMonth(pm.getMonth()+1);
+  const pays=[];let pm=new Date(st.getFullYear(),st.getMonth(),day,12);if(ldate(pm)<ldate(st))pm.setMonth(pm.getMonth()+1);
   while(pm<=until){pays.push({d:ldate(pm),a:d.pay});pm.setMonth(pm.getMonth()+1)}
-  for(const ds in extras)pays.push({d:ds.slice(0,10),a:extras[ds]});
+  for(const ds in extras){if(ds>=ldate(st))pays.push({d:ds.slice(0,10),a:extras[ds]})}
   pays.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
   let bal=d.bal,int_=0,pi=0;
   let cur=new Date(st.getTime());
   while(bal>0.5&&cur<=until){
    const cd=ldate(cur);
+   if(bal>0){const intx=bal*r;if(cd<=ldate(stop))int_+=intx;bal+=intx} // accrue first: on the day a payment posts, interest is charged on the pre-payment balance
    while(pi<pays.length&&pays[pi].d<=cd){const p=pays[pi++];bal-=p.a;if(bal<=0.5){return{bal:0,int_,last:cur}}}
-   if(bal>0){const intx=bal*r;if(cd<=ldate(stop))int_+=intx;bal+=intx}
    cur.setDate(cur.getDate()+1)}
   return{bal,int_,last:null}}
  const cap=new Date(stop.getFullYear()+110,0,1);
  const now=sim(stop),end=sim(cap);
  let payoff=d.closed||null,bal=now.bal,int_=now.int_;
  // extras already paid (on or before today) always reduce the current balance
- if(!d.closed)for(const ds in extras){if(ds.slice(0,10)<=ldate(stop))bal-=extras[ds]}
+ if(!d.closed)for(const ds in extras){if(ds<d.start)bal-=extras[ds]}
+ // interest that accrued before the engine's start date (bank accrues daily on posted balance)
+ if(d.intStart&&d.intStart<dstr&&d.intStart<d.start&&!d.closed){const r=d.apr/36500;const days=Math.max(0,Math.round((new Date(dstr+'T12:00:00')-new Date(d.intStart+'T12:00:00'))/864e5));bal+=bal*r*days}
  if(d.closed)bal=0;
  if(!payoff&&end.bal<=0.5&&end.last)payoff=end.last.toISOString().slice(0,10);
  const slow=!payoff&&end.bal>0.5;
