@@ -73,6 +73,33 @@ svg{display:block;width:100%}
 .setrow .btn-s{width:auto;padding:10px 12px}
 .sect{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 4px}
 .recycle{font-size:10px;color:var(--acc);margin-left:5px}
+.txbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.txbar select{flex:1 1 130px;min-width:0;max-width:100%;width:auto;padding:10px 12px;font-size:14px}
+.txbar .ord{flex:0 0 auto;white-space:nowrap;padding:10px 14px;font-size:14px}
+.txbar .add{flex:0 0 auto;white-space:nowrap;width:auto;margin:0;padding:10px 14px;font-size:14px}
+@media (max-width:520px){
+ .txbar{gap:6px}
+ .txbar select{flex:1 1 96px;padding:9px 10px;font-size:13px}
+ .txbar .ord{flex:0 1 auto;padding:9px 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis}
+ .txbar .add{flex:1 0 100%;padding:11px 10px;font-size:14px;margin-top:2px}
+}
+.irs{width:100%;min-width:460px;border-collapse:collapse}
+@media (max-width:520px){
+ .irsw{overflow-x:visible!important}
+ .irs{min-width:0;display:block}
+ .irs tbody{display:block}
+ .irs tr.hdr{display:none}
+ .irs tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 10px;padding:10px 0;border-bottom:1px solid var(--line)}
+ .irs tr:last-child{border-bottom:0;padding-bottom:2px}
+ .irs td{display:block;padding:0;border:0;text-align:left!important;font-size:13px;overflow-wrap:anywhere}
+ .irs td::before{content:attr(data-l);display:block;font-size:9.5px;line-height:1.3;letter-spacing:.045em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:2px}
+}
+@media (max-width:520px){
+ .wir{flex-wrap:wrap}
+ .wir input[type=number]{flex:1 1 100%!important;order:1}
+ .wir input[type=date]{flex:1 1 60%!important;order:2}
+ .wir button{flex:1 1 30%!important;order:3}
+}
 </style>
 </head>
 <body>
@@ -979,17 +1006,17 @@ function renderDebts(){
   h+=`<div class="card" style="border-left:4px solid #ff6b6b"><div class="row"><h2 style="margin:0">IRS installment</h2><span class="chip">${cfg.apr}% + ${cfg.penRate}%/mo FTP penalty</span></div>
   <div class="bal" style="font-size:30px;margin:6px 0">${fmt(cur)}</div>
   <div class="bar"><i style="width:${done}%;background:#ff6b6b"></i></div>
-  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="margin-top:8px;min-width:460px"><tr><th>Year</th><th class="r">Tax</th><th class="r">Penalty</th><th class="r">Interest</th><th class="r">Total</th><th class="r">Zeroes out</th></tr>`;
+  <div class="irsw"><table class="irs" style="margin-top:8px"><tr class="hdr"><th>Year</th><th class="r">Tax</th><th class="r">Penalty</th><th class="r">Interest</th><th class="r">Total</th><th class="r">Zeroes out</th></tr>`;
   const byYr={};for(const a of N.accs)byYr[a.year]=a; // current balances, not payoff-date ones
   for(const a of cfg.accounts){const e=byYr[a.year];const tot=e.tax+e.pen+e.int;
-   h+=`<tr><td>${a.year}</td><td class="r">${fmt(e.tax)}</td><td class="r">${fmt(e.pen)}</td><td class="r">${fmt(e.int)}</td><td class="r"><b>${fmt(tot)}</b></td><td class="r pos">${N.zeros[a.year]||(E.zeros[a.year]||'—')}</td></tr>`}
+   h+=`<tr><td data-l="Year">${a.year}</td><td class="r" data-l="Tax">${fmt(e.tax)}</td><td class="r" data-l="Penalty">${fmt(e.pen)}</td><td class="r" data-l="Interest">${fmt(e.int)}</td><td class="r" data-l="Total"><b>${fmt(tot)}</b></td><td class="r pos" data-l="Zeroes out">${N.zeros[a.year]||(E.zeros[a.year]||'—')}</td></tr>`}
   h+=`</table></div>
   <div class="row" style="margin-top:10px"><span class="tiny">Projected payoff</span><span class="num">${E.payoff||'⚠ Never at '+fmt(cfg.payAmt)+'/mo — raise the payment'}</span></div>
   <div class="row"><span class="tiny">Interest paid so far</span><span class="num amb">${fmt(N.intPaid)}</span></div>
   <div class="row"><span class="tiny">Penalties paid so far</span><span class="num amb">${fmt(N.penPaid)}</span></div>
   <div class="row"><span class="tiny">Total interest + penalties by payoff</span><span class="num amb">${fmt(E.intAll+E.penAll)}</span></div>
   <div class="row"><span class="tiny">Extra payments in ledger</span><span class="num pos">${fmt(exT)}</span></div>
-  <div class="row" style="gap:8px;margin-top:10px"><input type="number" step="0.01" id="ir-x-amt" placeholder="Extra payment" style="flex:2"><input type="date" id="ir-x-date" value="${dstr}" style="flex:2"><button class="btn-p" style="flex:1;padding:10px 8px" onclick="irsAddExtra()">Add</button></div>
+  <div class="row wir" style="gap:8px;margin-top:10px"><input type="number" step="0.01" id="ir-x-amt" placeholder="Extra payment" style="flex:2"><input type="date" id="ir-x-date" value="${dstr}" style="flex:2"><button class="btn-p" style="flex:1;padding:10px 8px" onclick="irsAddExtra()">Add</button></div>
   <div class="tiny" style="margin-top:6px">Monthly ${fmt(cfg.payAmt)} lands on day ${cfg.payDay}. One-time extras go in the ledger as “IRS extra pay” (same as any other debt) — the projection picks them up automatically, applies them interest → penalty → tax, oldest year first, exactly like the IRS does.</div></div>`;
  }else if(D.taxbill&&D.taxbill.series[0][1]>0){const T=D.taxbill,s=T.series;const cur=taxOn(dstr)
   const start=s[0][1],done=(1-cur/start)*100;
@@ -1031,13 +1058,13 @@ let filter='all';
 function openSettings(){document.getElementById('setmodal').classList.add('on')}
 function renderTxns(){
  const cats=['all','Income','Payroll','Bills','Other spending','Credit Cards','Debt'];
- let h=`<div class="row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;justify-content:flex-start"><select id="f-sel" class="btn-s" style="width:auto;max-width:70%;flex:0 1 auto;padding:10px 12px;font-size:14px" onchange="setF(this.value)">`;
+ let h=`<div class="row txbar"><select id="f-sel" class="btn-s" onchange="setF(this.value)">`;
  for(const c of cats)h+=`<option value="${c}" ${filter===c?'selected':''}>${c==='Debt'?'Debt payment':(c==='all'?'All':c)}</option>`;
  h+=`</select>`;
  const FKIND={'Income':'income','Payroll':'income','Bills':'dec','Credit Cards':'dec','Debt':'debt'};
  function fmatch(k,amt){if(filter==='all')return true;const catx=CATX[k]||CAT[k]||null;const c=catx?(CAT_KIND[catx]||catx):((amt||0)>0?'income':'dec');if(filter==='Payroll')return catx==='Payroll';if(filter==='Bills')return catx==='Bills';if(filter==='Other spending')return catx==='Other spending'||(c==='dec'&&!catx);if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false}
- h+=`<button class="btn-s" id="orderbtn" style="flex-shrink:0;padding:10px 14px;font-size:14px" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button>`;
- h+=`<button class="btn-p" onclick="openAdd()" style="flex-shrink:0;padding:10px 14px;font-size:14px;width:auto;margin:0">+ Add entry</button></div>`;
+ h+=`<button class="btn-s ord" id="orderbtn" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button>`;
+ h+=`<button class="btn-p add" onclick="openAdd()">+ Add entry</button></div>`;
  let list=D.rows.slice().sort((a,b)=>txnNewest?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
  if(txnNewest){const fut=list.filter(t=>t.date>=dstr).sort((a,b)=>a.date.localeCompare(b.date)),past=list.filter(t=>t.date<dstr).sort((a,b)=>b.date.localeCompare(a.date));list=fut.concat(past)}
  if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k,t[k])));
