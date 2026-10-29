@@ -479,9 +479,9 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
  h+=`<h2 style="cursor:pointer" onclick="toggleTSec('next30')">Next 30 days ${n30Open?'▾':'▸'}${n30Open?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">${up.length?`+${fmt(upIn)} in · −${fmt(upOut)} out · <b class="num ${upSum>=0?'pos':'neg'}">${upSum>=0?'+':'−'}${fmt(Math.abs(upSum))}</b>`:'nothing scheduled'}</span>`}</h2>`;
  if(n30Open)h+=`<div class="card">`;
  if(!up.length&&n30Open)h+=`<div class="tiny">Nothing scheduled</div>`;
- for(const u of up.slice(0,25)){const c=catOf(u.k,u.amt);const L=labelOf(u.k,u.amt,u.date);
+ if(n30Open)for(const u of up.slice(0,25)){const c=catOf(u.k,u.amt);const L=labelOf(u.k,u.amt,u.date);
   h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${(L&&L.label&&!['undefined'].includes(L.label))?L.label:u.k}${u.eng?' <span class="tiny" style="color:var(--amber)">scheduled</span>':''}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
- if(up.length>25)h+=`<div class="tiny" style="padding-top:8px">+ ${up.length-25} more this period</div>`;
+ if(n30Open&&up.length>25)h+=`<div class="tiny" style="padding-top:8px">+ ${up.length-25} more this period</div>`;
  if(n30Open)h+='</div>';
  // debt snapshot
  if(Object.keys(D.series).length||myDebts().length)h+=`<h2>Debt progress</h2><div class="card">
@@ -505,6 +505,10 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
  const mOpenT=tSecOpen('month');
  h+=`<h2 style="cursor:pointer" onclick="toggleTSec('month')">Month view ${mOpenT?'▾':'▸'}${mOpenT?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">${new Date(window._calY,window._calM,1).toLocaleString('en-US',{month:'long',year:'numeric'})} — tap to open the calendar</span>`}</h2>`;
  if(mOpenT){window._calHost='v-today';h+=calHTML(window._calY,window._calM)}
+ // cashflow (former Cashflow tab), collapsible
+ const cfOpen=tSecOpen('cashflow');
+ h+=`<h2 style="cursor:pointer" onclick="toggleTSec('cashflow')">Cashflow ${cfOpen?'▾':'▸'}${cfOpen?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">daily cashflow, monthly net — tap to open</span>`}</h2>`;
+ if(cfOpen){window._cashHost='today';h+=monthHTML()}
  document.getElementById('v-today').innerHTML=h;
  drawChart(document.getElementById('chartwrap'),balPts.map(p=>[p[0],p[1]]));
 }
@@ -535,7 +539,7 @@ function calInit(){
 function renderCal(){calInit();drawCal()}
 // collapsible sections on Today (persisted)
 function tSecOpen(k){
- if(!window._tSec){window._tSec={next30:localStorage.getItem('cf_t_next30')!=='0',month:localStorage.getItem('cf_t_month')==='1'}}
+ if(!window._tSec){window._tSec={next30:localStorage.getItem('cf_t_next30')!=='0',month:localStorage.getItem('cf_t_month')!=='0',cashflow:localStorage.getItem('cf_t_cashflow')==='1'}}
  return !!window._tSec[k]}
 function toggleTSec(k){const o=tSecOpen(k);window._tSec[k]=!o;localStorage.setItem('cf_t_'+k,o?'0':'1');renderToday()}
 function drawCal(){document.getElementById('v-cal').innerHTML=calHTML(window._calY,window._calM)}
@@ -589,13 +593,13 @@ function calHTML(y,m){
 function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}window._calOpen=null;calRedraw()}
 function toggleCalDay(dd){window._calOpen=(window._calOpen===dd)?null:dd;calRedraw()}
 function balOnCal(y,m,dd){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;return balOn(ds)}
-function shiftLedger(n){window._ledgerM+=n;if(window._ledgerM<0){window._ledgerM=11;window._ledgerY--}if(window._ledgerM>11){window._ledgerM=0;window._ledgerY++}renderMonth()}
-function toggleDay(dd){window._openDays=(window._openDays===dd)?null:dd;renderMonth()}
-function toggleMTable(){window._mOpen=!window._mOpen;try{localStorage.setItem('cf_mopen',window._mOpen?'1':'0')}catch(e){}renderMonth()}
+function shiftLedger(n){window._ledgerM+=n;if(window._ledgerM<0){window._ledgerM=11;window._ledgerY--}if(window._ledgerM>11){window._ledgerM=0;window._ledgerY++}redrawCash()}
+function toggleDay(dd){window._openDays=(window._openDays===dd)?null:dd;redrawCash()}
+function toggleMTable(){window._mOpen=!window._mOpen;try{localStorage.setItem('cf_mopen',window._mOpen?'1':'0')}catch(e){}redrawCash()}
 
 // ---------- MONTHLY CASHFLOW ----------
 function catOfRow(k,amt){return catOf(k,amt)}
-function renderMonth(){
+function monthHTML(){
  const byM={};
  for(const t of D.rows){const mk=t.date.slice(0,7);const b=byM[mk]=byM[mk]||{inc:0,dec:0,debt:0};
   for(const k in t){if(k==='date')continue;const c=catOf(k,t[k]);
@@ -655,8 +659,10 @@ function renderMonth(){
    h+=`<tr ${m2===mk?'style="outline:1px solid var(--acc);border-radius:6px"':''}><td>${m2}</td><td class="r pos">${fmtK(b.inc)}</td><td class="r">${fmtK(-(b.dec+b.debt))}</td><td class="r ${net>=0?'pos':'neg'}">${fmtK(net)}</td><td class="r">${fmtK(end)}</td></tr>`}
   h+='</table></div>';
  }
- document.getElementById('v-month').innerHTML=h;
+ return h;
 }
+function renderMonth(){const el=document.getElementById('v-month');if(el)el.innerHTML=monthHTML()}
+function redrawCash(){if(window._cashHost==='today')renderToday();else renderMonth()}
 
 
 // ---------- USER DEBTS (editable) ----------
