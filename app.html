@@ -11,7 +11,7 @@
 <style>
 :root{--bg:#0e131d;--card:#1a2130;--card2:#232c3f;--txt:#e8edf6;--mut:#8b97ab;--green:#3ecf8e;--red:#ff6b6b;--acc:#5b8def;--amber:#f5b342;--line:#2a3448}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding-bottom:80px;-webkit-font-smoothing:antialiased}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding-bottom:calc(104px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
 .wrap{max-width:760px;margin:0 auto;padding:16px 14px}
 h1{font-size:20px;font-weight:800;letter-spacing:.3px}
 h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:22px 0 8px}
@@ -463,14 +463,14 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
    const dt=new Date(from.getFullYear(),from.getMonth()+m,day);
    if(dt<from||dt>until)continue;
    const ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-   if(!have.has(ds+'|'+dd.name.toLowerCase()+'|'+dd.pay))up.push({date:ds,k:dd.name,amt:-dd.pay,eng:1})}}
+   if(!have.has(ds+'|'+dd.name.toLowerCase()+'|'+(-dd.pay)))up.push({date:ds,k:dd.name,amt:-dd.pay,eng:1})}}
  if(D.irs&&irsTotal()>0.5){
   const day=Math.min(D.irs.payDay||15,28);
   for(let m=0;m<2;m++){
    const dt=new Date(from.getFullYear(),from.getMonth()+m,day);
    if(dt<from||dt>until)continue;
    const ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-   if(!have.has(ds+'|irs|'+D.irs.payAmt))up.push({date:ds,k:'IRS',amt:-D.irs.payAmt,eng:1})}}
+   if(!have.has(ds+'|irs|'+(-D.irs.payAmt)))up.push({date:ds,k:'IRS',amt:-D.irs.payAmt,eng:1})}}
  up.sort((a,b)=>a.date<b.date?-1:1);
  const n30Open=tSecOpen('next30');
  const upIn=up.filter(u=>u.amt>0).reduce((a,u)=>a+u.amt,0);
@@ -483,6 +483,15 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
   h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${(L&&L.label&&!['undefined'].includes(L.label))?L.label:u.k}${u.eng?' <span class="tiny" style="color:var(--amber)">scheduled</span>':''}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
  if(n30Open&&up.length>25)h+=`<div class="tiny" style="padding-top:8px">+ ${up.length-25} more this period</div>`;
  if(n30Open)h+='</div>';
+ // the Month tab in full, embedded here and collapsed by default
+ calInit();
+ const mOpenT=tSecOpen('month');
+ h+=`<h2 style="cursor:pointer" onclick="toggleTSec('month')">Month view ${mOpenT?'▾':'▸'}${mOpenT?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">${new Date(window._calY,window._calM,1).toLocaleString('en-US',{month:'long',year:'numeric'})} — tap to open the calendar</span>`}</h2>`;
+ if(mOpenT){window._calHost='v-today';h+=calHTML(window._calY,window._calM)}
+ // cashflow (former Cashflow tab), collapsible
+ const cfOpen=tSecOpen('cashflow');
+ h+=`<h2 style="cursor:pointer" onclick="toggleTSec('cashflow')">Cashflow ${cfOpen?'▾':'▸'}${cfOpen?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">daily cashflow, monthly net — tap to open</span>`}</h2>`;
+ if(cfOpen){window._cashHost='today';h+=monthHTML()}
  // debt snapshot
  if(Object.keys(D.series).length||myDebts().length)h+=`<h2>Debt progress</h2><div class="card">
  <div class="row"><span class="tiny">Paid off since start</span><span class="num pos">${fmt(paid)}</span></div>
@@ -500,15 +509,6 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
  h+='</div>';
  // balance chart
  h+=`<h2>Balance — full plan</h2><div class="card" id="chartwrap"></div>`;
- // the Month tab in full, embedded here and collapsed by default
- calInit();
- const mOpenT=tSecOpen('month');
- h+=`<h2 style="cursor:pointer" onclick="toggleTSec('month')">Month view ${mOpenT?'▾':'▸'}${mOpenT?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">${new Date(window._calY,window._calM,1).toLocaleString('en-US',{month:'long',year:'numeric'})} — tap to open the calendar</span>`}</h2>`;
- if(mOpenT){window._calHost='v-today';h+=calHTML(window._calY,window._calM)}
- // cashflow (former Cashflow tab), collapsible
- const cfOpen=tSecOpen('cashflow');
- h+=`<h2 style="cursor:pointer" onclick="toggleTSec('cashflow')">Cashflow ${cfOpen?'▾':'▸'}${cfOpen?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">daily cashflow, monthly net — tap to open</span>`}</h2>`;
- if(cfOpen){window._cashHost='today';h+=monthHTML()}
  document.getElementById('v-today').innerHTML=h;
  drawChart(document.getElementById('chartwrap'),balPts.map(p=>[p[0],p[1]]));
 }
