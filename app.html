@@ -127,7 +127,7 @@ svg{display:block;width:100%}
 <div class="modal" id="setmodal" onclick="if(event.target===this)closeModal()"><div class="sheet">
 <div class="row"><h2 style="margin:0">Settings & tools</h2><button class="btn-s" style="padding:6px 10px" onclick="closeModal()">✕</button></div>
 <div class="sect">Plan</div>
-<div class="setrow"><button class="btn-p" onclick="openAdd()">+ Add entry</button><button class="btn-s" onclick="startOver()">Switch plan</button></div>
+<div class="setrow"><button class="btn-s" onclick="editStartBal()">Starting balance</button><button class="btn-s" onclick="startOver()">Switch plan</button></div>
 <div class="sect">Backups</div>
 <div class="setrow"><button class="btn-s" onclick="saveBackup()">Save backup</button><button class="btn-s" onclick="exportPlan()">Export plan</button><button class="btn-s" style="color:var(--txt)" onclick="document.getElementById('plan-file').click()">Import plan</button><input type="file" id="plan-file" accept=".json,application/json" style="display:none;width:0;height:0;position:absolute" onchange="importPlanFile(this)"></div>
 <div class="sect">Data</div>
@@ -165,10 +165,8 @@ svg{display:block;width:100%}
 </div></div>
 <nav>
 <button class="on" data-v="today" onclick="go('today')">Today</button>
-<button data-v="cal" onclick="go('cal')">Month</button>
-<button data-v="month" onclick="go('month')">Cashflow</button>
+<button data-v="txns" onclick="go('txns')">Transactions</button>
 <button data-v="debts" onclick="go('debts')">Debts</button>
-<button data-v="txns" onclick="go('txns')">Ledger</button>
 </nav>
 <script>
 // Sample plan — built relative to today so every month shows real activity
@@ -445,9 +443,13 @@ if(D.irs&&!myDebts().some(d=>/^irs/i.test(d.name))){
 const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SUPD.includes(k)).reduce((a,[,s])=>a+s[0][1],0)+myDebts().reduce((a,d)=>a+d.bal,0);
  let paid=startDebt-(totDebt-engIrs)+engIrsPaid;if(Math.abs(paid)<0.005)paid=0;
  const pct=Math.max(0,Math.min(100,startDebt?paid/startDebt*100:0));
+ // Carryover into next month = projected balance at the end of this month
+ const cY=Number(dstr.slice(0,4)),cM=Number(dstr.slice(5,7));
+ const eomD=new Date(cY,cM,0).getDate();
+ const carry=balOn(`${cY}-${String(cM).padStart(2,'0')}-${String(eomD).padStart(2,'0')}`);
+ const nextName=new Date(cY,cM,1).toLocaleString('en-US',{month:'long'});
  let h=`<div class="card"><div class="tiny">BANK BALANCE (PLAN)</div><div class="bal">${fmt(b)}</div>
- <div class="row" style="margin-top:6px"><span class="tiny"><span style="color:var(--txt)">${b>=start?'Up':'Down'} ${fmt(Math.abs(b-start))} since ${startLbl} <a href="#" onclick="editStartBal();return false" style="color:var(--mut);text-decoration:underline">(edit start)</a></span></span><span class="num ${b>=start?'pos':'neg'}">${b>=start?'+':'−'}${fmt(Math.abs(b-start))}</span></div>
- ${tIrs>0?`<div class="row"><span class="tiny">IRS balance (accruing daily)</span><span class="num neg">${fmt(tIrs)}</span></div>`:''}</div>`;
+ <div class="row" style="margin-top:6px"><span class="tiny">Carryover into ${nextName}</span><span class="num ${carry>=0?'pos':'neg'}">${fmt(carry)}</span></div> <div class="row"><span class="tiny">Debt balance</span><span class="num ${totDebt>0?'neg':''}">${fmt(totDebt)}</span></div></div>`;
  // upcoming 14 days
  const up=[];
  const from=new Date(dstr),until=new Date(from);until.setDate(until.getDate()+30);
@@ -470,12 +472,17 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
    const ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
    if(!have.has(ds+'|irs|'+D.irs.payAmt))up.push({date:ds,k:'IRS',amt:-D.irs.payAmt,eng:1})}}
  up.sort((a,b)=>a.date<b.date?-1:1);
- h+=`<h2>Next 30 days</h2><div class="card">`;
- if(!up.length)h+=`<div class="tiny">Nothing scheduled</div>`;
+ const n30Open=tSecOpen('next30');
+ const upIn=up.filter(u=>u.amt>0).reduce((a,u)=>a+u.amt,0);
+ const upOut=up.filter(u=>u.amt<0).reduce((a,u)=>a-u.amt,0);
+ const upSum=upIn-upOut;
+ h+=`<h2 style="cursor:pointer" onclick="toggleTSec('next30')">Next 30 days ${n30Open?'▾':'▸'}${n30Open?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">${up.length?`+${fmt(upIn)} in · −${fmt(upOut)} out · <b class="num ${upSum>=0?'pos':'neg'}">${upSum>=0?'+':'−'}${fmt(Math.abs(upSum))}</b>`:'nothing scheduled'}</span>`}</h2>`;
+ if(n30Open)h+=`<div class="card">`;
+ if(!up.length&&n30Open)h+=`<div class="tiny">Nothing scheduled</div>`;
  for(const u of up.slice(0,25)){const c=catOf(u.k,u.amt);const L=labelOf(u.k,u.amt,u.date);
   h+=`<div class="txn" onclick="editTxn('${u.date}','${u.k}',${u.amt})"><div><div>${(L&&L.label&&!['undefined'].includes(L.label))?L.label:u.k}${u.eng?' <span class="tiny" style="color:var(--amber)">scheduled</span>':''}${L&&L.rec?'<span class="recycle">♻</span>':''}</div><div class="tiny">${u.date.slice(5)}${L&&L.label!==u.k?' · '+u.k:''}</div></div><span class="num ${c==='income'?'pos':'neg'}">${c==='income'?'+':''}${fmt(u.amt)}</span></div>`}
  if(up.length>25)h+=`<div class="tiny" style="padding-top:8px">+ ${up.length-25} more this period</div>`;
- h+='</div>';
+ if(n30Open)h+='</div>';
  // debt snapshot
  if(Object.keys(D.series).length||myDebts().length)h+=`<h2>Debt progress</h2><div class="card">
  <div class="row"><span class="tiny">Paid off since start</span><span class="num pos">${fmt(paid)}</span></div>
@@ -493,6 +500,11 @@ const startDebt=Object.entries(D.series).filter(([k])=>k!=='Extra Debt Pay'&&!SU
  h+='</div>';
  // balance chart
  h+=`<h2>Balance — full plan</h2><div class="card" id="chartwrap"></div>`;
+ // the Month tab in full, embedded here and collapsed by default
+ calInit();
+ const mOpenT=tSecOpen('month');
+ h+=`<h2 style="cursor:pointer" onclick="toggleTSec('month')">Month view ${mOpenT?'▾':'▸'}${mOpenT?'':`<span class="tiny" style="text-transform:none;letter-spacing:0;margin-left:10px">${new Date(window._calY,window._calM,1).toLocaleString('en-US',{month:'long',year:'numeric'})} — tap to open the calendar</span>`}</h2>`;
+ if(mOpenT){window._calHost='v-today';h+=calHTML(window._calY,window._calM)}
  document.getElementById('v-today').innerHTML=h;
  drawChart(document.getElementById('chartwrap'),balPts.map(p=>[p[0],p[1]]));
 }
@@ -513,14 +525,22 @@ function drawChart(el,pts){
 }
 
 // ---------- MONTH CALENDAR ----------
-function renderCal(){
+function calInit(){
+ if(window._calY!=null&&window._calM!=null)return;
  const now=new Date();let y=now.getFullYear(),m=now.getMonth();
  {const A=D.bal[0][0].split('-'),B=D.bal[D.bal.length-1][0].split('-');if(new Date(y,m,1)<new Date(+A[0],+A[1]-1,1)){y=+A[0];m=+A[1]-1}
  if(new Date(y,m+1,0)>new Date(+B[0],+B[1]-1,+B[2])){y=+B[0];m=+B[1]-1}}
- window._calY=y;window._calM=m;drawCal();
+ window._calY=y;window._calM=m;
 }
-function drawCal(){
- const y=window._calY,m=window._calM;
+function renderCal(){calInit();drawCal()}
+// collapsible sections on Today (persisted)
+function tSecOpen(k){
+ if(!window._tSec){window._tSec={next30:localStorage.getItem('cf_t_next30')!=='0',month:localStorage.getItem('cf_t_month')==='1'}}
+ return !!window._tSec[k]}
+function toggleTSec(k){const o=tSecOpen(k);window._tSec[k]=!o;localStorage.setItem('cf_t_'+k,o?'0':'1');renderToday()}
+function drawCal(){document.getElementById('v-cal').innerHTML=calHTML(window._calY,window._calM)}
+function calRedraw(){if(window._calHost==='v-today')renderToday();else drawCal()}
+function calHTML(y,m){
  const first=new Date(y,m,1),dim=new Date(y,m+1,0).getDate();
  const off=first.getDay();
  // events by day of month
@@ -564,10 +584,10 @@ function drawCal(){
  <div class="row"><span class="tiny">Debt payments</span><span class="num amb">${fmt(debt)}</span></div>
  <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span class="tiny"><b>Net</b></span><span class="num ${inc+dec+debt>=0?'pos':'neg'}">${fmt(inc+dec+debt)}</span></div>
  <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span class="tiny"><b>Ending balance</b></span><span class="num ${mbalEnd<500?'neg':''}">${fmt(mbalEnd)}</span></div></div>`;
- document.getElementById('v-cal').innerHTML=h;
+ return h;
 }
-function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}window._calOpen=null;drawCal()}
-function toggleCalDay(dd){window._calOpen=(window._calOpen===dd)?null:dd;drawCal()}
+function shiftCal(n){window._calM+=n;if(window._calM<0){window._calM=11;window._calY--}if(window._calM>11){window._calM=0;window._calY++}window._calOpen=null;calRedraw()}
+function toggleCalDay(dd){window._calOpen=(window._calOpen===dd)?null:dd;calRedraw()}
 function balOnCal(y,m,dd){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;return balOn(ds)}
 function shiftLedger(n){window._ledgerM+=n;if(window._ledgerM<0){window._ledgerM=11;window._ledgerY--}if(window._ledgerM>11){window._ledgerM=0;window._ledgerY++}renderMonth()}
 function toggleDay(dd){window._openDays=(window._openDays===dd)?null:dd;renderMonth()}
@@ -589,7 +609,7 @@ function renderMonth(){
  const isCur=mk===dstr.slice(0,7);
  const dim=new Date(LY,LM+1,0).getDate();
  const todayD=Number(dstr.slice(8,10));
- h+=`<h2 style="display:flex;align-items:center;gap:10px"><button class="btn" style="padding:2px 10px" onclick="shiftLedger(-1)">‹</button>${mName}<button class="btn" style="padding:2px 10px" onclick="shiftLedger(1)">›</button><span class="tiny" style="margin-left:auto">Daily ledger — tap a day for detail</span></h2><div class="card">`;
+ h+=`<h2 style="display:flex;align-items:center;gap:10px"><button class="btn" style="padding:2px 10px" onclick="shiftLedger(-1)">‹</button>${mName}<button class="btn" style="padding:2px 10px" onclick="shiftLedger(1)">›</button><span class="tiny" style="margin-left:auto">Daily cashflow — tap a day for detail</span></h2><div class="card">`;
  const byDay={};for(const t of D.rows){if(t.date.slice(0,7)!==mk)continue;(byDay[t.date]=byDay[t.date]||[]).push(t)}
  const dayBal=dd=>balOn(dd);
  const startBal=balOn(`${LY}-${String(LM+1).padStart(2,'0')}-01`);
@@ -888,7 +908,8 @@ function renderTxns(){
  h+=`</select>`;
  const FKIND={'Income':'income','Payroll':'income','Bills':'dec','Credit Cards':'dec','Debt':'debt'};
  function fmatch(k,amt){if(filter==='all')return true;const catx=CATX[k]||CAT[k]||null;const c=catx?(CAT_KIND[catx]||catx):((amt||0)>0?'income':'dec');if(filter==='Payroll')return catx==='Payroll';if(filter==='Bills')return catx==='Bills';if(filter==='Other spending')return catx==='Other spending'||(c==='dec'&&!catx);if(filter==='Credit Cards')return catx==='Credit Cards';if(filter==='Income')return c==='income'&&catx!=='Payroll';if(filter==='Debt')return c==='debt'&&catx!=='Credit Cards';return false}
- h+=`<button class="btn-s" id="orderbtn" style="flex-shrink:0;padding:10px 14px;font-size:14px" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button></div>`;
+ h+=`<button class="btn-s" id="orderbtn" style="flex-shrink:0;padding:10px 14px;font-size:14px" onclick="toggleOrder()">⇅ ${txnNewest?'Next first ↓':'Last first ↑'}</button>`;
+ h+=`<button class="btn-p" onclick="openAdd()" style="flex-shrink:0;padding:10px 14px;font-size:14px;width:auto;margin:0">+ Add entry</button></div>`;
  let list=D.rows.slice().sort((a,b)=>txnNewest?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
  if(txnNewest){const fut=list.filter(t=>t.date>=dstr).sort((a,b)=>a.date.localeCompare(b.date)),past=list.filter(t=>t.date<dstr).sort((a,b)=>b.date.localeCompare(a.date));list=fut.concat(past)}
  if(filter!=='all')list=list.filter(t=>Object.keys(t).some(k=>k!=='date'&&fmatch(k,t[k])));
