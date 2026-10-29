@@ -8,12 +8,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <style>
 :root{--bg:#0e131d;--card:#1a2130;--card2:#232c3f;--txt:#e8edf6;--mut:#8b97ab;--green:#3ecf8e;--red:#ff6b6b;--acc:#5b8def;--amber:#f5b342;--line:#2a3448}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding-bottom:calc(104px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
 .wrap{max-width:760px;margin:0 auto;padding:16px 14px}
 h1{font-size:20px;font-weight:800;letter-spacing:.3px}
+.brand{height:25px;width:auto;display:block}
 h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:22px 0 8px}
 .sub{color:var(--mut);font-size:12px;margin-top:2px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:12px}
@@ -75,7 +77,7 @@ svg{display:block;width:100%}
 </head>
 <body>
 <div class="wrap">
-  <div class="row"><div><h1>Count On It</h1><div class="sub" id="asof"></div></div></div>
+  <div class="row"><div><img class="brand" src="logo.svg" alt="Count On It" width="151" height="25"><div class="sub" id="asof"></div></div></div>
   <div style="text-align:right;margin-top:-34px"><button class="gear" onclick="openSettings()" title="Settings">⚙</button></div>
   <div id="v-today"></div><div id="v-cal" class="hidden"></div><div id="v-month" class="hidden"></div><div id="v-debts" class="hidden"></div><div id="v-txns" class="hidden"></div>
 </div>
